@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Live Chat Assistant</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+        darkMode: "class",
+        theme: {
+            extend: {
+                colors: {
+                    "primary": "#46ec13",
+                    "background-light": "#f6f8f6",
+                    "background-dark": "#121212", 
+                    "surface-dark": "#1E1E1E",
+                    "surface-light": "#ffffff",
+                },
+                fontFamily: {
+                    "display": ["Manrope", "sans-serif"]
+                },
+                borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+                animation: {
+                    'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    'fade-in': 'fadeIn 0.5s ease-out forwards',
+                },
+                keyframes: {
+                    fadeIn: {
+                        '0%': { opacity: '0', transform: 'translateY(5px)' },
+                        '100%': { opacity: '1', transform: 'translateY(0)' },
+                    }
+                }
+            },
+        },
+    }
+</script>
+<style>.no-scrollbar::-webkit-scrollbar {
+        display: none;
+    }.no-scrollbar {
+        -ms-overflow-style: none;scrollbar-width: none;}
+</style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display min-h-screen flex flex-col antialiased selection:bg-primary/30">
+<header class="flex items-center px-6 py-4 justify-between sticky top-0 z-50 bg-background-light/90 dark:bg-background-dark/90 backdrop-blur-xl border-b border-gray-100 dark:border-white/5 transition-all">
+<div class="text-gray-900 dark:text-white flex size-10 shrink-0 items-center justify-center rounded-full bg-gray-100 dark:bg-surface-dark cursor-pointer transition-colors hover:bg-gray-200 dark:hover:bg-white/10">
+<span class="material-symbols-outlined" style="font-size: 24px;">arrow_back</span>
+</div>
+<div class="flex flex-col items-center justify-center">
+<h2 class="text-gray-900 dark:text-white text-lg font-bold leading-tight tracking-[-0.015em]">Assistant</h2>
+<div class="flex items-center gap-1.5 animate-fade-in mt-0.5">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+</span>
+<span class="text-xs font-medium text-primary tracking-wide">Using live glasses</span>
+</div>
+</div>
+<div class="size-10 shrink-0 flex items-center justify-center text-gray-900 dark:text-white rounded-full bg-gray-100 dark:bg-surface-dark cursor-pointer transition-colors hover:bg-gray-200 dark:hover:bg-white/10">
+<span class="material-symbols-outlined" style="font-size: 24px;">more_horiz</span>
+</div>
+</header>
+<main class="flex-1 flex flex-col p-4 pb-72 max-w-md mx-auto w-full space-y-10 overflow-y-auto no-scrollbar">
+<div class="flex justify-end animate-fade-in" style="animation-delay: 0ms;">
+<div class="bg-surface-light dark:bg-surface-dark text-gray-900 dark:text-gray-100 px-5 py-3 rounded-2xl rounded-tr-sm max-w-[85%] shadow-sm border border-gray-100 dark:border-white/5">
+<p class="text-[17px] leading-relaxed font-medium">Where did I put my wallet?</p>
+</div>
+</div>
+<div class="flex flex-col gap-3 pl-2 max-w-[95%] animate-fade-in" style="animation-delay: 150ms;">
+<p class="text-[17px] leading-relaxed text-gray-800 dark:text-gray-200 font-normal">
+            I saw you place it in the top drawer of your nightstand last night when you got home.
+        </p>
+<div class="flex flex-wrap gap-2 items-center">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider">
+<span class="text-sm">🧠</span> Memory
+            </span>
+</div>
+<div class="mt-1 group relative flex items-center gap-4 p-3 pr-5 bg-surface-light dark:bg-surface-dark rounded-2xl border border-gray-200 dark:border-white/5 hover:border-primary/30 transition-colors cursor-pointer shadow-sm">
+<div class="relative size-12 shrink-0 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+<span class="material-symbols-outlined text-gray-400 dark:text-gray-500" style="font-size: 20px;">history</span>
+</div>
+<div class="flex flex-col flex-1 min-w-0">
+<div class="flex items-center gap-2 mb-0.5">
+<span class="text-xs font-semibold text-gray-400">Yesterday • 11:23 PM</span>
+</div>
+<span class="text-sm font-bold text-gray-900 dark:text-white truncate">Wallet in nightstand</span>
+</div>
+<span class="text-primary text-sm font-bold whitespace-nowrap opacity-80 group-hover:opacity-100 transition-opacity">View</span>
+</div>
+</div>
+<div class="flex justify-end animate-fade-in" style="animation-delay: 300ms;">
+<div class="bg-surface-light dark:bg-surface-dark text-gray-900 dark:text-gray-100 px-5 py-3 rounded-2xl rounded-tr-sm max-w-[85%] shadow-sm border border-gray-100 dark:border-white/5">
+<p class="text-[17px] leading-relaxed font-medium">What am I looking at right now?</p>
+</div>
+</div>
+<div class="flex flex-col gap-3 pl-2 max-w-[95%] animate-fade-in" style="animation-delay: 450ms;">
+<p class="text-[17px] leading-relaxed text-gray-800 dark:text-gray-200 font-normal">
+            You are holding a bottle of sparkling water. It looks like San Pellegrino based on the red star logo.
+        </p>
+<div class="flex flex-wrap gap-2 items-center">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-primary/50 text-primary text-xs font-bold uppercase tracking-wider bg-primary/5 shadow-[0_0_10px_rgba(70,236,19,0.1)]">
+<span class="text-sm">👓</span> Live Vision
+            </span>
+</div>
+</div>
+<div class="flex justify-end animate-fade-in" style="animation-delay: 600ms;">
+<div class="bg-surface-light dark:bg-surface-dark text-gray-900 dark:text-gray-100 px-5 py-3 rounded-2xl rounded-tr-sm max-w-[85%] shadow-sm border border-gray-100 dark:border-white/5">
+<p class="text-[17px] leading-relaxed font-medium">Is it healthy?</p>
+</div>
+</div>
+<div class="flex flex-col gap-3 pl-2 max-w-[95%] animate-fade-in" style="animation-delay: 750ms;">
+<p class="text-[17px] leading-relaxed text-gray-800 dark:text-gray-200 font-normal">
+            Generally, yes. It has zero calories and no sugar. <br/><br/>However, you mentioned last week you were trying to reduce sodium, and this brand has about 10mg per serving.
+        </p>
+<div class="flex flex-wrap gap-2 items-center">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-white/10 text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-wider">
+<span class="text-sm">🌐</span> Web
+            </span>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider">
+<span class="text-sm">🧠</span> Memory
+            </span>
+</div>
+</div>
+</main>
+<div class="fixed bottom-0 left-0 right-0 z-40 pointer-events-none flex flex-col justify-end h-96">
+<div class="absolute bottom-0 left-0 right-0 h-full bg-gradient-to-t from-background-light via-background-light/95 to-transparent dark:from-background-dark dark:via-background-dark/95 dark:to-transparent"></div>
+<div class="relative pointer-events-auto max-w-md mx-auto w-full px-4 pb-6 flex flex-col gap-5">
+<div class="relative flex items-center gap-3 p-1.5 pl-2 bg-surface-light dark:bg-surface-dark rounded-[2rem] border border-gray-200 dark:border-white/10 shadow-xl focus-within:ring-1 focus-within:ring-primary focus-within:border-primary transition-all duration-300">
+<button class="shrink-0 size-10 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors">
+<span class="material-symbols-outlined">keyboard</span>
+</button>
+<input class="flex-1 bg-transparent border-none text-gray-900 dark:text-white placeholder-gray-400 focus:ring-0 p-0 text-base font-medium" placeholder="Message Assistant..." type="text"/>
+<button class="shrink-0 size-11 flex items-center justify-center rounded-full bg-primary text-black hover:bg-primary/90 transition-colors shadow-[0_0_20px_rgba(70,236,19,0.3)] active:scale-95">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">mic</span>
+</button>
+</div>
+<nav class="w-full bg-surface-light/90 dark:bg-surface-dark/90 backdrop-blur-xl border border-gray-200 dark:border-white/5 shadow-2xl rounded-full px-8 py-4 flex items-center justify-between">
+<button class="flex flex-col items-center justify-center gap-1 group w-12">
+<span class="material-symbols-outlined text-primary text-[28px]" style="font-variation-settings: 'FILL' 1;">home</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-1 group w-12">
+<span class="material-symbols-outlined text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200 transition-colors text-[28px]">psychology</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-1 group w-12 relative">
+<span class="material-symbols-outlined text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200 transition-colors text-[28px]">eyeglasses</span>
+<span class="absolute top-0 right-1 size-2.5 bg-primary rounded-full border-2 border-surface-light dark:border-surface-dark"></span>
+</button>
+<button class="flex flex-col items-center justify-center gap-1 group w-12">
+<span class="material-symbols-outlined text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200 transition-colors text-[28px]">settings</span>
+</button>
+</nav>
+</div>
+</div>
+</body></html>
