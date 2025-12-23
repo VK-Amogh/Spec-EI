@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SpecEI - Login</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#4ade80", // Green-400
+                        "primary-dark": "#22c55e", // Green-500
+                        "primary-glow": "rgba(74, 222, 128, 0.5)",
+                        "background-dark": "#000000", // Pure black
+                        "surface-dark": "#111111", // Dark Grey
+                        "surface-light": "#ffffff",
+                    },
+                    fontFamily: {
+                        display: ["Space Grotesk", "sans-serif"],
+                        sans: ["Inter", "sans-serif"],
+                    },
+                    borderRadius: {
+                        DEFAULT: "1rem",
+                        '2xl': "1.5rem",
+                        '3xl': "2rem",
+                    }
+                },
+            },
+        };
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #000000;
+        }
+        .font-display {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        .glass-panel {
+            background: #111111;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }input:-webkit-autofill,
+        input:-webkit-autofill:hover, 
+        input:-webkit-autofill:focus, 
+        input:-webkit-autofill:active{
+            -webkit-box-shadow: 0 0 0 30px #1a1a1a inset !important;
+            -webkit-text-fill-color: white !important;
+            transition: background-color 5000s ease-in-out 0s;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-black text-gray-100 min-h-screen flex items-center justify-center p-6 relative overflow-hidden">
+<div class="fixed inset-0 z-0 pointer-events-none">
+<div class="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-primary/5 rounded-full blur-[120px] opacity-20"></div>
+<div class="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] opacity-20"></div>
+</div>
+<div class="relative z-10 w-full max-w-sm flex flex-col gap-8 animate-[fadeIn_0.5s_ease-out]">
+<div class="text-center space-y-2">
+<h1 class="font-display text-4xl font-bold tracking-tighter text-white">
+                SpecEI<span class="text-primary text-2xl align-top">●</span>
+</h1>
+<p class="text-gray-500 text-sm font-medium tracking-wide">AI COMPANION ACCESS</p>
+</div>
+<div class="glass-panel p-8 rounded-[2rem] shadow-2xl shadow-black/50">
+<div class="mb-8">
+<h2 class="font-display text-2xl font-bold text-primary mb-1">Welcome Back</h2>
+<p class="text-gray-400 text-sm">Please sign in to continue syncing.</p>
+</div>
+<form class="space-y-5" onsubmit="event.preventDefault();">
+<div class="space-y-1.5">
+<label class="text-xs font-semibold text-gray-500 uppercase tracking-wider ml-1">Email</label>
+<div class="relative group">
+<div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-gray-500 group-focus-within:text-primary transition-colors text-[20px]">mail</span>
+</div>
+<input class="w-full bg-[#1A1A1A] text-white placeholder-gray-500 border border-white/5 rounded-xl py-3.5 pl-11 pr-4 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all text-sm font-medium" placeholder="name@example.com" type="email"/>
+</div>
+</div>
+<div class="space-y-1.5">
+<label class="text-xs font-semibold text-gray-500 uppercase tracking-wider ml-1">Password</label>
+<div class="relative group">
+<div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-gray-500 group-focus-within:text-primary transition-colors text-[20px]">lock</span>
+</div>
+<input class="w-full bg-[#1A1A1A] text-white placeholder-gray-500 border border-white/5 rounded-xl py-3.5 pl-11 pr-4 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all text-sm font-medium" placeholder="••••••••" type="password"/>
+<div class="absolute inset-y-0 right-0 pr-4 flex items-center cursor-pointer">
+<span class="material-symbols-outlined text-gray-600 hover:text-gray-400 transition-colors text-[20px]">visibility_off</span>
+</div>
+</div>
+</div>
+<div class="flex justify-end pt-1">
+<a class="text-xs font-medium text-gray-400 hover:text-white transition-colors" href="#">Forgot Password?</a>
+</div>
+<button class="w-full bg-primary hover:bg-primary-dark text-black font-semibold py-4 rounded-xl transition-all active:scale-[0.98] shadow-[0_0_20px_rgba(74,222,128,0.2)] hover:shadow-[0_0_25px_rgba(74,222,128,0.3)] mt-2 flex items-center justify-center gap-2 group">
+<span>Login</span>
+<span class="material-symbols-outlined text-[20px] transition-transform group-hover:translate-x-1">arrow_forward</span>
+</button>
+</form>
+<div class="relative my-8">
+<div class="absolute inset-0 flex items-center">
+<div class="w-full border-t border-white/10"></div>
+</div>
+<div class="relative flex justify-center text-xs uppercase">
+<span class="bg-[#111111] px-3 text-gray-500">Or continue with</span>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<button class="flex items-center justify-center gap-2 bg-[#1A1A1A] hover:bg-[#222222] border border-white/5 hover:border-white/10 rounded-xl py-3 transition-all">
+<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"></path></svg>
+<span class="text-sm font-medium text-gray-300">Google</span>
+</button>
+<button class="flex items-center justify-center gap-2 bg-[#1A1A1A] hover:bg-[#222222] border border-white/5 hover:border-white/10 rounded-xl py-3 transition-all">
+<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M14.25.183c.633.619 1.223 1.245 1.886 1.96.474.524 1.121 1.258 1.487 2.055.22.476.327 1.037.317 1.637a3.86 3.86 0 0 1-.363 1.57c-.244.53-.615.992-1.077 1.353-.667.51-1.488.783-2.327.768-.901-.018-1.764-.356-2.482-.962-.76-.64-1.222-1.543-1.282-2.527-.052-.86.236-1.697.77-2.37.525-.66 1.23-1.123 2.013-1.32.748-.184 1.528-.093 2.235.22.25.11.493.25.72.413l.112.083zM12.23 23.633c-1.424 0-2.822-.445-4.06-1.272-1.134-.766-2.003-1.87-2.485-3.14-.492-1.3-.434-2.735.15-3.996.537-1.164 1.442-2.113 2.583-2.723 1.015-.544 2.158-.834 3.32-.834h.02c1.245.01 2.457.34 3.53 1.006 1.077.674 1.92 1.635 2.42 2.76.46 1.047.575 2.22.332 3.356-.254 1.192-.91 2.24-1.85 2.97-1.134.87-2.54 1.34-3.97 1.332v.54z"></path></svg>
+<span class="text-sm font-medium text-gray-300">Apple</span>
+</button>
+</div>
+</div>
+<div class="text-center">
+<p class="text-gray-400 text-sm">
+                Don't have an account? 
+                <a class="text-primary hover:text-primary-dark font-medium transition-colors ml-1" href="#">Sign Up</a>
+</p>
+</div>
+</div>
+
+</body></html>
