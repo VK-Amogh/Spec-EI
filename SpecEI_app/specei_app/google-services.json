@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "222320680836",
+    "project_id": "specei-7b4ff",
+    "storage_bucket": "specei-7b4ff.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:222320680836:android:2886fbc3856fedd9b487d1",
+        "android_client_info": {
+          "package_name": "com.specei.specei_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDG1Syz208MxHHXwzf9rMf3dvWnke6bBfA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -10,6 +10,6 @@ class EnvConfig {
   static const String firebaseStorageBucket = 'specei-4c409.firebasestorage.app';
 
   // Supabase Configuration
-  static const String supabaseUrl = 'https://rdxjfzajyxaqjujnalbj.supabase.co';
-  static const String supabaseAnonKey = 'sb_publishable_tGWzYOZG7rF9N8H02XcreA_GPQd_m-t';
+  static const String supabaseUrl = 'https://sguojbwhhiatcdgpfise.supabase.co';
+  static const String supabaseAnonKey = 'sb_publishable_6d7_Op5l32keV-wAfHUtQA_FJ5Ocwpw';
 }
