@@ -8,6 +8,7 @@ class GlassPanel extends StatelessWidget {
   final EdgeInsetsGeometry? padding;
   final double borderRadius;
   final bool showTopGradient;
+  final List<BoxShadow>? boxShadow;
 
   const GlassPanel({
     super.key,
@@ -15,6 +16,7 @@ class GlassPanel extends StatelessWidget {
     this.padding,
     this.borderRadius = 32,
     this.showTopGradient = false,
+    this.boxShadow,
   });
 
   @override
@@ -25,7 +27,7 @@ class GlassPanel extends StatelessWidget {
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(borderRadius),
         border: Border.all(color: AppColors.borderLight),
-        boxShadow: AppColors.panelShadow,
+        boxShadow: boxShadow ?? AppColors.panelShadow,
       ),
       child: Stack(
         children: [

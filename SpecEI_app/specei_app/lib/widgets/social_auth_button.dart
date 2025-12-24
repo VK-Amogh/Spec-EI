@@ -101,86 +101,70 @@ class _GoogleIcon extends StatelessWidget {
 class _GoogleLogoPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..style = PaintingStyle.fill;
+    final double w = size.width;
+    final double h = size.height;
+    final Offset center = Offset(w / 2, h / 2);
 
-    // Blue
+    // Stroke width (approx 18% of size)
+    final double strokeWidth = w * 0.18;
+    // Radius for the stroke center
+    final double radius = (w - strokeWidth) / 2;
+    final Rect rect = Rect.fromCircle(center: center, radius: radius);
+
+    final Paint paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.butt
+      ..isAntiAlias = true;
+
+    // 1. Blue (Right Arc segment)
+    // Starts from 0 (East) down to ~+80 deg
     paint.color = const Color(0xFF4285F4);
-    canvas.drawPath(
-      Path()
-        ..moveTo(size.width * 0.96, size.height * 0.42)
-        ..lineTo(size.width * 0.5, size.height * 0.42)
-        ..lineTo(size.width * 0.5, size.height * 0.58)
-        ..lineTo(size.width * 0.78, size.height * 0.58)
-        ..cubicTo(
-          size.width * 0.72,
-          size.height * 0.74,
-          size.width * 0.62,
-          size.height * 0.84,
-          size.width * 0.5,
-          size.height * 0.84,
-        )
-        ..cubicTo(
-          size.width * 0.31,
-          size.height * 0.84,
-          size.width * 0.16,
-          size.height * 0.69,
-          size.width * 0.16,
-          size.height * 0.5,
-        )
-        ..cubicTo(
-          size.width * 0.16,
-          size.height * 0.31,
-          size.width * 0.31,
-          size.height * 0.16,
-          size.width * 0.5,
-          size.height * 0.16,
-        )
-        ..cubicTo(
-          size.width * 0.62,
-          size.height * 0.16,
-          size.width * 0.72,
-          size.height * 0.22,
-          size.width * 0.79,
-          size.height * 0.31,
-        )
-        ..lineTo(size.width * 0.91, size.height * 0.19)
-        ..cubicTo(
-          size.width * 0.81,
-          size.height * 0.08,
-          size.width * 0.66,
-          size.height * 0.0,
-          size.width * 0.5,
-          size.height * 0.0,
-        )
-        ..cubicTo(
-          size.width * 0.22,
-          size.height * 0.0,
-          0,
-          size.height * 0.22,
-          0,
-          size.height * 0.5,
-        )
-        ..cubicTo(
-          0,
-          size.height * 0.78,
-          size.width * 0.22,
-          size.height,
-          size.width * 0.5,
-          size.height,
-        )
-        ..cubicTo(
-          size.width * 0.87,
-          size.height,
-          size.width,
-          size.height * 0.71,
-          size.width,
-          size.height * 0.46,
-        )
-        ..lineTo(size.width, size.height * 0.42)
-        ..lineTo(size.width * 0.96, size.height * 0.42)
-        ..close(),
+    // Draw from -8 deg to +85 deg to cover the right side gap nicely
+    canvas.drawArc(rect, -0.15, 1.6, false, paint);
+
+    // 2. Green (Bottom)
+    // From end of Blue (~85 deg) to ~175 deg
+    paint.color = const Color(0xFF34A853);
+    canvas.drawArc(rect, 1.35, 1.6, false, paint);
+
+    // 3. Yellow (Left)
+    // From ~175 deg to ~265 deg
+    paint.color = const Color(0xFFFBBC05);
+    canvas.drawArc(rect, 2.9, 1.4, false, paint);
+
+    // 4. Red (Top)
+    // From ~265 deg to ~-25 deg (top right gap)
+    paint.color = const Color(0xFFEA4335);
+    canvas.drawArc(rect, 4.25, 1.6, false, paint);
+
+    // 5. Blue Bar (Filled Rect)
+    paint.style = PaintingStyle.fill;
+    paint.strokeWidth = 0;
+    paint.color = const Color(0xFF4285F4);
+
+    // The bar goes from center to the right edge, but slightly masked by the arc?
+    // It sits horizontally centered-ish.
+    // Width: radius (from center to almost edge)
+    // Height: same as stroke width
+    // Top: center.dy - strokeWidth/2
+    // Left: center.dx (approx)
+
+    // Adjust logic: Bar starts slight left of center to fully cover hole
+    canvas.drawRect(
+      Rect.fromLTWH(
+        center.dx - 2,
+        center.dy - strokeWidth / 2,
+        radius + strokeWidth / 2 + 2,
+        strokeWidth,
+      ),
       paint,
     );
+
+    // Masking the left part of blue bar inside the G?
+    // No, standard G has the bar going all the way to the blue arc on the right.
+    // And on the left side, it stops at the center vertical line effectively.
+    // The previous drawRect covers it.
   }
 
   @override

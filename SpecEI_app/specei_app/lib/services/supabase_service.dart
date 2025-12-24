@@ -70,4 +70,18 @@ class SupabaseService {
       return false;
     }
   }
+
+  /// Check if email already exists in the database
+  Future<bool> emailExists(String email) async {
+    try {
+      final response = await _client
+          .from('users')
+          .select('id')
+          .eq('email', email.toLowerCase().trim())
+          .maybeSingle();
+      return response != null;
+    } catch (e) {
+      return false;
+    }
+  }
 }

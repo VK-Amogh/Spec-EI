@@ -26,70 +26,71 @@ class PrimaryButton extends StatefulWidget {
 
 class _PrimaryButtonState extends State<PrimaryButton> {
   bool _isPressed = false;
+  bool _isHovered = false;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _isPressed = true),
-      onTapUp: (_) => setState(() => _isPressed = false),
-      onTapCancel: () => setState(() => _isPressed = false),
-      onTap: widget.isLoading ? null : widget.onPressed,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        width: widget.width ?? double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        transform: Matrix4.identity()..scale(_isPressed ? 0.98 : 1.0),
-        transformAlignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: widget.isLoading
-              ? AppColors.primary.withOpacity(0.7)
-              : AppColors.primary,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withOpacity(_isPressed ? 0.3 : 0.2),
-              blurRadius: _isPressed ? 25 : 20,
-              spreadRadius: 0,
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (widget.isLoading)
-              const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.black,
-                ),
-              )
-            else ...[
-              Text(
-                widget.text,
-                style: GoogleFonts.inter(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black,
-                ),
-              ),
-              if (widget.showArrow) ...[
-                const SizedBox(width: 8),
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  transform: Matrix4.identity()
-                    ..translate(_isPressed ? 4.0 : 0.0, 0.0),
-                  child: const Icon(
-                    Icons.arrow_forward,
-                    size: 20,
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTapDown: (_) => setState(() => _isPressed = true),
+        onTapUp: (_) => setState(() => _isPressed = false),
+        onTapCancel: () => setState(() => _isPressed = false),
+        onTap: widget.isLoading ? null : widget.onPressed,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 100),
+          width: widget.width ?? double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          transform: Matrix4.identity()..scale(_isPressed ? 0.95 : 1.0),
+          transformAlignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: widget.isLoading
+                ? AppColors.primary.withOpacity(0.7)
+                : AppColors.primary.withOpacity(
+                    _isPressed ? 0.8 : (_isHovered ? 0.8 : 1.0),
+                  ),
+            borderRadius: BorderRadius.circular(30),
+            // Removed shadows as requested
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (widget.isLoading)
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.black,
+                  ),
+                )
+              else ...[
+                Text(
+                  widget.text,
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
                     color: Colors.black,
                   ),
                 ),
+                if (widget.showArrow) ...[
+                  const SizedBox(width: 8),
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    transform: Matrix4.identity()
+                      ..translate(_isPressed ? 4.0 : 0.0, 0.0),
+                    child: const Icon(
+                      Icons.arrow_forward,
+                      size: 20,
+                      color: Colors.black,
+                    ),
+                  ),
+                ],
               ],
             ],
-          ],
+          ),
         ),
       ),
     );
