@@ -131,6 +131,15 @@ class _LoginScreenState extends State<LoginScreen> {
                       // Login form panel
                       GlassPanel(
                         padding: const EdgeInsets.all(32),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.white.withOpacity(
+                              0.1,
+                            ), // Light blurred white glow
+                            blurRadius: 60,
+                            spreadRadius: 2,
+                          ),
+                        ],
                         child: Form(
                           key: _formKey,
                           child: Column(

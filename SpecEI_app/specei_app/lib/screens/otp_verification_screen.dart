@@ -79,96 +79,71 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
     }
   }
 
+  void _autoFillOtp() {
+    if (!mounted || _mockOtp.isEmpty) return;
+
+    // Fill each digit into the corresponding controller
+    for (int i = 0; i < 6 && i < _mockOtp.length; i++) {
+      _controllers[i].text = _mockOtp[i];
+    }
+
+    // Trigger verification after auto-fill
+    setState(() {});
+    _verifyOtp();
+  }
+
   void _showOtpNotification() {
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: AppColors.primary.withOpacity(0.3)),
-        ),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(Icons.security, color: AppColors.primary, size: 24),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'Verification Code',
-              style: GoogleFonts.spaceGrotesk(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w600,
-                fontSize: 18,
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Your OTP for ${widget.verificationType} verification is:',
-              style: GoogleFonts.inter(
-                color: AppColors.textMuted,
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
+    // Show notification at the top of the screen
+    final overlay = Overlay.of(context);
+    late OverlayEntry overlayEntry;
+
+    overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        top: MediaQuery.of(context).padding.top + 16,
+        left: 16,
+        right: 16,
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
                 ),
-                decoration: BoxDecoration(
-                  color: AppColors.inputBackground,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.primary.withOpacity(0.5)),
-                ),
-                child: Text(
-                  _mockOtp,
+              ],
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.sms, color: AppColors.primary, size: 18),
+                const SizedBox(width: 12),
+                Text(
+                  'Your OTP: $_mockOtp',
                   style: GoogleFonts.spaceGrotesk(
-                    color: AppColors.primary,
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 8,
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    letterSpacing: 2,
                   ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'This is a mock OTP for testing purposes.',
-              style: GoogleFonts.inter(
-                color: AppColors.textDimmed,
-                fontSize: 11,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Got it',
-              style: GoogleFonts.inter(
-                color: AppColors.primary,
-                fontWeight: FontWeight.w600,
-              ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
+
+    overlay.insert(overlayEntry);
+
+    // Remove after 5 seconds
+    Future.delayed(const Duration(seconds: 5), () {
+      overlayEntry.remove();
+    });
   }
 
   void _startCountdown() {
@@ -279,6 +254,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
                                 _buildSuccessState()
                               else ...[
                                 _buildOtpFields(),
+                                const SizedBox(height: 16),
+                                _buildAutoEnterButton(),
                                 if (_showError) ...[
                                   const SizedBox(height: 16),
                                   _buildErrorMessage(),
@@ -448,6 +425,36 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
           ),
         );
       }),
+    );
+  }
+
+  Widget _buildAutoEnterButton() {
+    return TextButton.icon(
+      onPressed: _mockOtp.isNotEmpty ? _autoFillOtp : null,
+      icon: Icon(
+        Icons.flash_on,
+        color: _mockOtp.isNotEmpty ? AppColors.primary : AppColors.textMuted,
+        size: 18,
+      ),
+      label: Text(
+        'Auto Enter OTP',
+        style: GoogleFonts.inter(
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+          color: _mockOtp.isNotEmpty ? AppColors.primary : AppColors.textMuted,
+        ),
+      ),
+      style: TextButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(
+            color: _mockOtp.isNotEmpty
+                ? AppColors.primary.withOpacity(0.3)
+                : AppColors.borderLight,
+          ),
+        ),
+      ),
     );
   }
 

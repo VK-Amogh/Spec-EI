@@ -40,6 +40,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   bool _isPhoneVerified = false;
   bool _showVerifyEmailButton = false;
   bool _showVerifyPhoneButton = false;
+  bool _isCheckingEmail = false;
+  bool _emailAlreadyExists = false;
 
   @override
   void initState() {
@@ -61,9 +63,43 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   void _onEmailChanged() {
     final email = _emailController.text.toLowerCase().trim();
     final isValidGmail = email.endsWith('@gmail.com') && email.length > 11;
+
+    // Reset email exists state when typing
+    if (_emailAlreadyExists) {
+      setState(() => _emailAlreadyExists = false);
+    }
+
     setState(() {
-      _showVerifyEmailButton = isValidGmail && !_isEmailVerified;
+      _showVerifyEmailButton =
+          isValidGmail && !_isEmailVerified && !_emailAlreadyExists;
     });
+
+    // Check if email exists when valid
+    if (isValidGmail && !_isEmailVerified) {
+      _checkEmailExists(email);
+    }
+  }
+
+  Future<void> _checkEmailExists(String email) async {
+    if (_isCheckingEmail) return;
+
+    setState(() => _isCheckingEmail = true);
+
+    try {
+      final exists = await _supabaseService.emailExists(email);
+      if (mounted && _emailController.text.toLowerCase().trim() == email) {
+        setState(() {
+          _emailAlreadyExists = exists;
+          _showVerifyEmailButton = !exists && !_isEmailVerified;
+        });
+      }
+    } catch (e) {
+      // Silently fail - don't block registration
+    } finally {
+      if (mounted) {
+        setState(() => _isCheckingEmail = false);
+      }
+    }
   }
 
   void _onPhoneChanged() {
@@ -184,71 +220,47 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       }
 
       if (mounted) {
-        // Show success dialog
-        await showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => AlertDialog(
-            backgroundColor: AppColors.surface,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-              side: BorderSide(color: AppColors.primary.withOpacity(0.3)),
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
+        // Show brief success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
               children: [
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.primary, width: 3),
-                  ),
-                  child: Icon(Icons.check, color: AppColors.primary, size: 40),
-                ),
-                const SizedBox(height: 20),
+                Icon(Icons.check_circle, color: AppColors.primary, size: 20),
+                const SizedBox(width: 12),
                 Text(
-                  'Account Created!',
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Welcome to SpecEI, ${_nameController.text}!',
-                  textAlign: TextAlign.center,
+                  'Account created! Welcome, ${_nameController.text}!',
                   style: GoogleFonts.inter(
-                    fontSize: 14,
-                    color: AppColors.textMuted,
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
             ),
-            actions: [
-              Center(
-                child: TextButton(
-                  onPressed: () {
-                    Navigator.pop(context); // Close dialog
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (_) => const LoginScreen()),
-                    );
-                  },
-                  child: Text(
-                    'Continue to Login',
-                    style: GoogleFonts.inter(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            backgroundColor: AppColors.surface,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
+
+        // Navigate to login with smooth fade transition
+        await Future.delayed(const Duration(milliseconds: 500));
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            PageRouteBuilder(
+              pageBuilder: (context, animation, secondaryAnimation) =>
+                  const LoginScreen(),
+              transitionsBuilder:
+                  (context, animation, secondaryAnimation, child) {
+                    return FadeTransition(opacity: animation, child: child);
+                  },
+              transitionDuration: const Duration(milliseconds: 300),
+            ),
+          );
+        }
       }
     } catch (e) {
       setState(() => _errorMessage = e.toString());
@@ -450,10 +462,49 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       ],
                     ),
                   ),
+                if (_isCheckingEmail && !_isEmailVerified)
+                  Positioned(
+                    right: 12,
+                    top: 32,
+                    child: SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
         ),
+        if (_emailAlreadyExists) ...[
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.orange.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.orange.withOpacity(0.3)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.warning_amber, color: Colors.orange, size: 16),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'An account with this email already exists. Please login instead.',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: Colors.orange,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         if (_showVerifyEmailButton) ...[
           const SizedBox(height: 12),
           _buildVerifyButton(label: 'Verify Email', onPressed: _verifyEmail),
