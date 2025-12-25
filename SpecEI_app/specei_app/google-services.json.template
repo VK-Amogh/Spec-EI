@@ -1,15 +1,15 @@
 {
   "project_info": {
-    "project_number": "222320680836",
-    "project_id": "specei-7b4ff",
-    "storage_bucket": "specei-7b4ff.firebasestorage.app"
+    "project_number": "YOUR_PROJECT_NUMBER",
+    "project_id": "YOUR_PROJECT_ID",
+    "storage_bucket": "YOUR_STORAGE_BUCKET"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:222320680836:android:2886fbc3856fedd9b487d1",
+        "mobilesdk_app_id": "YOUR_APP_ID",
         "android_client_info": {
-          "package_name": "com.specei.specei_app"
+          "package_name": "YOUR_PACKAGE_NAME"
         }
       },
       "oauth_client": [],
