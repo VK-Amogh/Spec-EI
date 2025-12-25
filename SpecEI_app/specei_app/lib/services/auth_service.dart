@@ -35,7 +35,7 @@ class AuthService {
         email: email.trim(),
         password: password,
       );
-    } on FirebaseAuthException catch (e) {
+    } on FirebaseException catch (e) {
       throw _handleAuthException(e);
     }
   }
@@ -43,12 +43,19 @@ class AuthService {
   /// Create account with email and password
   Future<UserCredential> signUpWithEmail(String email, String password) async {
     try {
-      return await _auth.createUserWithEmailAndPassword(
+      debugPrint('Attempting to create user with email: $email');
+      final result = await _auth.createUserWithEmailAndPassword(
         email: email.trim(),
         password: password,
       );
-    } on FirebaseAuthException catch (e) {
+      debugPrint('User created successfully: ${result.user?.uid}');
+      return result;
+    } on FirebaseException catch (e) {
+      debugPrint('Firebase signup error: ${e.code} - ${e.message}');
       throw _handleAuthException(e);
+    } catch (e) {
+      debugPrint('Unexpected signup error: $e');
+      rethrow;
     }
   }
 
@@ -94,7 +101,32 @@ class AuthService {
   Future<void> sendPasswordResetEmail(String email) async {
     try {
       await _auth.sendPasswordResetEmail(email: email.trim());
-    } on FirebaseAuthException catch (e) {
+    } on FirebaseException catch (e) {
+      throw _handleAuthException(e);
+    }
+  }
+
+  /// Send password reset via phone (starts phone verification)
+  Future<void> sendPasswordResetPhone(
+    String phoneNumber, {
+    required Function(String verificationId) onCodeSent,
+    required Function(String error) onError,
+  }) async {
+    try {
+      await _auth.verifyPhoneNumber(
+        phoneNumber: phoneNumber,
+        verificationCompleted: (PhoneAuthCredential credential) async {
+          // Auto-verification on Android
+        },
+        verificationFailed: (FirebaseException e) {
+          onError(_handleAuthException(e));
+        },
+        codeSent: (String verificationId, int? resendToken) {
+          onCodeSent(verificationId);
+        },
+        codeAutoRetrievalTimeout: (String verificationId) {},
+      );
+    } on FirebaseException catch (e) {
       throw _handleAuthException(e);
     }
   }
@@ -118,7 +150,7 @@ class AuthService {
 
       // Update password
       await user.updatePassword(newPassword);
-    } on FirebaseAuthException catch (e) {
+    } on FirebaseException catch (e) {
       throw _handleAuthException(e);
     }
   }
@@ -129,7 +161,7 @@ class AuthService {
       final user = _auth.currentUser;
       if (user == null) throw 'No user logged in';
       await user.updateDisplayName(name);
-    } on FirebaseAuthException catch (e) {
+    } on FirebaseException catch (e) {
       throw _handleAuthException(e);
     }
   }
@@ -143,7 +175,8 @@ class AuthService {
   }
 
   /// Handle Firebase Auth exceptions
-  String _handleAuthException(FirebaseAuthException e) {
+  String _handleAuthException(FirebaseException e) {
+    debugPrint('Auth exception code: ${e.code}, message: ${e.message}');
     switch (e.code) {
       case 'user-not-found':
         return 'No account found with this email.';
@@ -161,6 +194,8 @@ class AuthService {
         return 'Too many attempts. Please try again later.';
       case 'network-request-failed':
         return 'Network error. Please check your connection.';
+      case 'internal-error':
+        return 'Firebase configuration error. Please check your internet connection and try again.';
       default:
         return e.message ?? 'An error occurred. Please try again.';
     }

@@ -6,6 +6,7 @@ import '../widgets/primary_button.dart';
 import '../widgets/glass_panel.dart';
 import '../services/auth_service.dart';
 import 'package:intl_phone_number_input/intl_phone_number_input.dart';
+import 'otp_verification_screen.dart';
 
 /// Forgot Password Screen - SpecEI
 /// Matches design from _ai_hub_ultimate_ui_4
@@ -96,25 +97,46 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         final dialCode = _dialCodes[_phoneNumber.isoCode] ?? '+91';
         final digits = _phoneController.text.replaceAll(RegExp(r'[^0-9]'), '');
         final fullPhone = '$dialCode$digits';
-        // This now logs to Supabase AND triggers code logic
-        await _authService.sendPasswordResetPhone(fullPhone);
+        // This triggers phone verification code
+        await _authService.sendPasswordResetPhone(
+          fullPhone,
+          onCodeSent: (verificationId) {
+            if (mounted) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => OtpVerificationScreen(
+                    verificationType: 'phone',
+                    verificationTarget: fullPhone,
+                    isPasswordReset: true,
+                  ),
+                ),
+              );
+            }
+          },
+          onError: (error) {
+            setState(() => _errorMessage = error);
+          },
+        );
+        return; // Don't navigate again
       } else {
         final email = _emailController.text.trim();
-        // This now logs to Supabase AND sends Firebase link
+        // This sends Firebase password reset link
         await _authService.sendPasswordResetEmail(email);
       }
 
       if (mounted) {
-        Navigator.pushNamed(
+        Navigator.push(
           context,
-          '/otp-verification',
-          arguments: {
-            'type': _usePhone ? 'phone' : 'email',
-            'target': _usePhone
-                ? '${_dialCodes[_phoneNumber.isoCode] ?? "+91"}${_phoneController.text.replaceAll(RegExp(r'[^0-9]'), '')}'
-                : _emailController.text.trim(),
-            'isPasswordReset': true,
-          },
+          MaterialPageRoute(
+            builder: (context) => OtpVerificationScreen(
+              verificationType: _usePhone ? 'phone' : 'email',
+              verificationTarget: _usePhone
+                  ? '${_dialCodes[_phoneNumber.isoCode] ?? "+91"}${_phoneController.text.replaceAll(RegExp(r'[^0-9]'), '')}'
+                  : _emailController.text.trim(),
+              isPasswordReset: true,
+            ),
+          ),
         );
       }
     } catch (e) {

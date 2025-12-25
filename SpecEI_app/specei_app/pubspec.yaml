@@ -49,14 +49,15 @@ dependencies:
   
   # Utilities
   url_launcher: ^6.2.5
-<<<<<<< HEAD
   google_generative_ai: ^0.4.7
-  
+  http: ^1.2.0
+
   # Recording (mobile support)
   path_provider: ^2.1.1
   permission_handler: ^11.1.0
-=======
->>>>>>> Homepage
+  
+  # Phone input
+  intl_phone_number_input: ^0.7.4
 
 dev_dependencies:
   flutter_test:

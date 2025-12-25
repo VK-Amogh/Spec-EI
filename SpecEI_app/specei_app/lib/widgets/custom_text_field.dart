@@ -9,12 +9,15 @@ class CustomTextField extends StatefulWidget {
   final String placeholder;
   final IconData? prefixIcon;
   final IconData? suffixIcon;
+  final Widget? suffix;
   final VoidCallback? onSuffixTap;
   final bool obscureText;
   final TextEditingController? controller;
   final TextInputType keyboardType;
   final String? Function(String?)? validator;
   final void Function(String)? onChanged;
+  final String? errorText;
+  final bool enabled;
 
   const CustomTextField({
     super.key,
@@ -22,12 +25,15 @@ class CustomTextField extends StatefulWidget {
     required this.placeholder,
     this.prefixIcon,
     this.suffixIcon,
+    this.suffix,
     this.onSuffixTap,
     this.obscureText = false,
     this.controller,
     this.keyboardType = TextInputType.text,
     this.validator,
     this.onChanged,
+    this.errorText,
+    this.enabled = true,
   });
 
   @override

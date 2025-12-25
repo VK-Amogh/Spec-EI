@@ -78,6 +78,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   @override
   void initState() {
     super.initState();
+    _errorMessage = null; // Clear any previous error
     _emailController.addListener(_onEmailChanged);
     _passwordController.addListener(_onPasswordChanged);
   }
@@ -145,6 +146,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         });
       }
     } catch (e) {
+      debugPrint('Email check error: $e');
       // Silently fail - don't block registration
     } finally {
       if (mounted) {
@@ -208,8 +210,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         _isEmailVerified = true;
         _showVerifyEmailButton = false;
       });
-      // Store email verification in Supabase
-      _supabaseService.updateEmailVerification(_emailController.text, true);
+      // Note: Email verification is stored when user completes registration
     }
   }
 
@@ -243,12 +244,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         _isPhoneVerified = true;
         _showVerifyPhoneButton = false;
       });
-      // Store phone verification in Supabase
-      _supabaseService.updatePhoneVerification(
-        _emailController.text,
-        '${_dialCodes[_phoneNumber.isoCode] ?? "+91"}${_phoneController.text.replaceAll(RegExp(r'[^0-9]'), '')}',
-        true,
-      );
+      // Note: Phone verification is stored when user completes registration
     }
   }
 
@@ -1028,6 +1024,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   }
 
   Widget _buildErrorMessage() {
+    debugPrint('Showing error: $_errorMessage'); // Debug print
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -1044,6 +1041,10 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
               _errorMessage!,
               style: GoogleFonts.inter(fontSize: 12, color: Colors.red),
             ),
+          ),
+          GestureDetector(
+            onTap: () => setState(() => _errorMessage = null),
+            child: const Icon(Icons.close, color: Colors.red, size: 18),
           ),
         ],
       ),

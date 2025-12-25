@@ -1,0 +1,68 @@
+{
+  "project_info": {
+    "project_number": "335323220058",
+    "project_id": "specei-4c409",
+    "storage_bucket": "specei-4c409.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:335323220058:android:a20e71675b14ec90dbb063",
+        "android_client_info": {
+          "package_name": "SpecEi.com"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "335323220058-4rd7rie1u1cfa71ltq190ln2uqoqlbo7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDnrSI5jmbFgjqgbKWKiic2aPx3d1wrEwc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "335323220058-4rd7rie1u1cfa71ltq190ln2uqoqlbo7.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:335323220058:android:0184449ec815f269dbb063",
+        "android_client_info": {
+          "package_name": "com.specei.specei_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "335323220058-4rd7rie1u1cfa71ltq190ln2uqoqlbo7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDnrSI5jmbFgjqgbKWKiic2aPx3d1wrEwc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "335323220058-4rd7rie1u1cfa71ltq190ln2uqoqlbo7.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

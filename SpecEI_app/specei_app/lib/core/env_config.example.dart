@@ -1,6 +1,6 @@
-# SpecEI Environment Configuration
-# Copy this file to env_config.dart and fill in your API keys
-# DO NOT commit env_config.dart to version control!
+// SpecEI Environment Configuration
+// Copy this file to env_config.dart and fill in your API keys
+// DO NOT commit env_config.dart to version control!
 
 class EnvConfig {
   // Firebase Configuration
