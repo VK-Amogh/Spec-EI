@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../core/app_colors.dart';
 
 /// Social authentication button (Google/Apple)
-/// Dark glassmorphic style with hover effects
+/// Dark glassmorphic style with hover effects and click sound
 class SocialAuthButton extends StatefulWidget {
   final String label;
   final Widget icon;
@@ -16,11 +17,11 @@ class SocialAuthButton extends StatefulWidget {
     this.onPressed,
   });
 
-  /// Google sign-in button
+  /// Google sign-in button with improved colored icon
   factory SocialAuthButton.google({VoidCallback? onPressed}) {
     return SocialAuthButton(
       label: 'Google',
-      icon: _GoogleIcon(),
+      icon: const _GoogleColoredIcon(),
       onPressed: onPressed,
     );
   }
@@ -40,6 +41,19 @@ class SocialAuthButton extends StatefulWidget {
 
 class _SocialAuthButtonState extends State<SocialAuthButton> {
   bool _isHovered = false;
+  bool _isPressed = false;
+
+  /// Play haptic feedback and click sound
+  void _playClickSound() {
+    HapticFeedback.lightImpact();
+    SystemSound.play(SystemSoundType.click);
+  }
+
+  void _handleTap() {
+    if (widget.onPressed == null) return;
+    _playClickSound();
+    widget.onPressed?.call();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,18 +61,24 @@ class _SocialAuthButtonState extends State<SocialAuthButton> {
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
       child: GestureDetector(
-        onTap: widget.onPressed,
+        onTapDown: (_) => setState(() => _isPressed = true),
+        onTapUp: (_) => setState(() => _isPressed = false),
+        onTapCancel: () => setState(() => _isPressed = false),
+        onTap: _handleTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
+          transform: Matrix4.identity()..scale(_isPressed ? 0.97 : 1.0),
+          transformAlignment: Alignment.center,
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
           decoration: BoxDecoration(
             color: _isHovered
                 ? const Color(0xFF222222)
                 : AppColors.inputBackground,
+            // Minimized rounding - was 12, keeping at 12 for consistency
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: _isHovered
-                  ? AppColors.borderMedium
+                  ? Colors.white.withOpacity(0.2)
                   : AppColors.borderLight,
             ),
           ),
@@ -85,86 +105,201 @@ class _SocialAuthButtonState extends State<SocialAuthButton> {
   }
 }
 
-/// Google icon widget
-class _GoogleIcon extends StatelessWidget {
+/// Improved Google icon with official brand colors
+class _GoogleColoredIcon extends StatelessWidget {
+  const _GoogleColoredIcon();
+
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       width: 20,
       height: 20,
-      child: CustomPaint(painter: _GoogleLogoPainter()),
+      child: CustomPaint(painter: _GoogleColoredLogoPainter()),
     );
   }
 }
 
-/// Google logo painter
-class _GoogleLogoPainter extends CustomPainter {
+/// Google logo painter with official brand colors
+class _GoogleColoredLogoPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final double w = size.width;
-    final double h = size.height;
-    final Offset center = Offset(w / 2, h / 2);
 
-    // Stroke width (approx 18% of size)
-    final double strokeWidth = w * 0.18;
-    // Radius for the stroke center
-    final double radius = (w - strokeWidth) / 2;
-    final Rect rect = Rect.fromCircle(center: center, radius: radius);
+    // Scale factor for the paths
+    final double scale = w / 24;
 
-    final Paint paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.butt
-      ..isAntiAlias = true;
+    final Paint bluePaint = Paint()
+      ..color = const Color(0xFF4285F4)
+      ..style = PaintingStyle.fill;
 
-    // 1. Blue (Right Arc segment)
-    // Starts from 0 (East) down to ~+80 deg
-    paint.color = const Color(0xFF4285F4);
-    // Draw from -8 deg to +85 deg to cover the right side gap nicely
-    canvas.drawArc(rect, -0.15, 1.6, false, paint);
+    final Paint greenPaint = Paint()
+      ..color = const Color(0xFF34A853)
+      ..style = PaintingStyle.fill;
 
-    // 2. Green (Bottom)
-    // From end of Blue (~85 deg) to ~175 deg
-    paint.color = const Color(0xFF34A853);
-    canvas.drawArc(rect, 1.35, 1.6, false, paint);
+    final Paint yellowPaint = Paint()
+      ..color = const Color(0xFFFBBC05)
+      ..style = PaintingStyle.fill;
 
-    // 3. Yellow (Left)
-    // From ~175 deg to ~265 deg
-    paint.color = const Color(0xFFFBBC05);
-    canvas.drawArc(rect, 2.9, 1.4, false, paint);
+    final Paint redPaint = Paint()
+      ..color = const Color(0xFFEA4335)
+      ..style = PaintingStyle.fill;
 
-    // 4. Red (Top)
-    // From ~265 deg to ~-25 deg (top right gap)
-    paint.color = const Color(0xFFEA4335);
-    canvas.drawArc(rect, 4.25, 1.6, false, paint);
-
-    // 5. Blue Bar (Filled Rect)
-    paint.style = PaintingStyle.fill;
-    paint.strokeWidth = 0;
-    paint.color = const Color(0xFF4285F4);
-
-    // The bar goes from center to the right edge, but slightly masked by the arc?
-    // It sits horizontally centered-ish.
-    // Width: radius (from center to almost edge)
-    // Height: same as stroke width
-    // Top: center.dy - strokeWidth/2
-    // Left: center.dx (approx)
-
-    // Adjust logic: Bar starts slight left of center to fully cover hole
-    canvas.drawRect(
-      Rect.fromLTWH(
-        center.dx - 2,
-        center.dy - strokeWidth / 2,
-        radius + strokeWidth / 2 + 2,
-        strokeWidth,
-      ),
-      paint,
+    // Blue section (right side + bar)
+    Path bluePath = Path();
+    bluePath.moveTo(22.56 * scale, 12.25 * scale);
+    bluePath.cubicTo(
+      22.56 * scale,
+      11.47 * scale,
+      22.49 * scale,
+      10.72 * scale,
+      22.36 * scale,
+      10.0 * scale,
     );
+    bluePath.lineTo(12 * scale, 10.0 * scale);
+    bluePath.lineTo(12 * scale, 14.26 * scale);
+    bluePath.lineTo(17.92 * scale, 14.26 * scale);
+    bluePath.cubicTo(
+      17.66 * scale,
+      15.63 * scale,
+      16.88 * scale,
+      16.79 * scale,
+      15.71 * scale,
+      17.57 * scale,
+    );
+    bluePath.lineTo(15.71 * scale, 20.34 * scale);
+    bluePath.lineTo(19.28 * scale, 20.34 * scale);
+    bluePath.cubicTo(
+      21.36 * scale,
+      18.42 * scale,
+      22.56 * scale,
+      15.6 * scale,
+      22.56 * scale,
+      12.25 * scale,
+    );
+    bluePath.close();
+    canvas.drawPath(bluePath, bluePaint);
 
-    // Masking the left part of blue bar inside the G?
-    // No, standard G has the bar going all the way to the blue arc on the right.
-    // And on the left side, it stops at the center vertical line effectively.
-    // The previous drawRect covers it.
+    // Green section (bottom right)
+    Path greenPath = Path();
+    greenPath.moveTo(12 * scale, 23 * scale);
+    greenPath.cubicTo(
+      14.97 * scale,
+      23 * scale,
+      17.46 * scale,
+      22.02 * scale,
+      19.28 * scale,
+      20.34 * scale,
+    );
+    greenPath.lineTo(15.71 * scale, 17.57 * scale);
+    greenPath.cubicTo(
+      14.73 * scale,
+      18.23 * scale,
+      13.48 * scale,
+      18.63 * scale,
+      12 * scale,
+      18.63 * scale,
+    );
+    greenPath.cubicTo(
+      9.14 * scale,
+      18.63 * scale,
+      6.71 * scale,
+      16.7 * scale,
+      5.84 * scale,
+      14.1 * scale,
+    );
+    greenPath.lineTo(2.18 * scale, 14.1 * scale);
+    greenPath.lineTo(2.18 * scale, 16.94 * scale);
+    greenPath.cubicTo(
+      3.99 * scale,
+      20.53 * scale,
+      7.7 * scale,
+      23 * scale,
+      12 * scale,
+      23 * scale,
+    );
+    greenPath.close();
+    canvas.drawPath(greenPath, greenPaint);
+
+    // Yellow section (bottom left)
+    Path yellowPath = Path();
+    yellowPath.moveTo(5.84 * scale, 14.09 * scale);
+    yellowPath.cubicTo(
+      5.62 * scale,
+      13.43 * scale,
+      5.49 * scale,
+      12.73 * scale,
+      5.49 * scale,
+      12 * scale,
+    );
+    yellowPath.cubicTo(
+      5.49 * scale,
+      11.27 * scale,
+      5.62 * scale,
+      10.57 * scale,
+      5.84 * scale,
+      9.91 * scale,
+    );
+    yellowPath.lineTo(5.84 * scale, 7.07 * scale);
+    yellowPath.lineTo(2.18 * scale, 7.07 * scale);
+    yellowPath.cubicTo(
+      1.43 * scale,
+      8.55 * scale,
+      1 * scale,
+      10.22 * scale,
+      1 * scale,
+      12 * scale,
+    );
+    yellowPath.cubicTo(
+      1 * scale,
+      13.78 * scale,
+      1.43 * scale,
+      15.45 * scale,
+      2.18 * scale,
+      16.93 * scale,
+    );
+    yellowPath.lineTo(5.84 * scale, 14.09 * scale);
+    yellowPath.close();
+    canvas.drawPath(yellowPath, yellowPaint);
+
+    // Red section (top)
+    Path redPath = Path();
+    redPath.moveTo(12 * scale, 5.38 * scale);
+    redPath.cubicTo(
+      13.62 * scale,
+      5.38 * scale,
+      15.06 * scale,
+      5.94 * scale,
+      16.21 * scale,
+      7.02 * scale,
+    );
+    redPath.lineTo(19.36 * scale, 3.87 * scale);
+    redPath.cubicTo(
+      17.45 * scale,
+      2.09 * scale,
+      14.97 * scale,
+      1 * scale,
+      12 * scale,
+      1 * scale,
+    );
+    redPath.cubicTo(
+      7.7 * scale,
+      1 * scale,
+      3.99 * scale,
+      3.47 * scale,
+      2.18 * scale,
+      7.07 * scale,
+    );
+    redPath.lineTo(5.84 * scale, 9.91 * scale);
+    redPath.cubicTo(
+      6.71 * scale,
+      7.31 * scale,
+      9.14 * scale,
+      5.38 * scale,
+      12 * scale,
+      5.38 * scale,
+    );
+    redPath.close();
+    canvas.drawPath(redPath, redPaint);
   }
 
   @override

@@ -5,17 +5,20 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../core/app_colors.dart';
 import '../widgets/glass_panel.dart';
+import '../services/supabase_service.dart';
 
 /// OTP Verification Screen
 /// 6-digit OTP input with auto-focus, mock OTP generation, and countdown timer
 class OtpVerificationScreen extends StatefulWidget {
   final String verificationType; // 'email' or 'phone'
   final String verificationTarget; // email address or phone number
+  final bool isPasswordReset;
 
   const OtpVerificationScreen({
     super.key,
     required this.verificationType,
     required this.verificationTarget,
+    this.isPasswordReset = false,
   });
 
   @override
@@ -37,6 +40,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
   int _resendCountdown = 60;
   Timer? _countdownTimer;
   bool _canResend = false;
+  final _supabaseService = SupabaseService();
 
   late AnimationController _successAnimController;
   late Animation<double> _successScaleAnim;
@@ -52,9 +56,30 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
       CurvedAnimation(parent: _successAnimController, curve: Curves.elasticOut),
     );
 
+    _initializeOtp();
+    _startCountdown();
+  }
+
+  Future<void> _initializeOtp() async {
+    if (widget.isPasswordReset) {
+      // For password reset, get the code from Supabase
+      final code = await _supabaseService.getLatestResetCode(
+        widget.verificationTarget,
+      );
+      if (code != null) {
+        setState(() {
+          _mockOtp = code;
+        });
+        if (mounted) {
+          _showOtpNotification();
+        }
+        return;
+      }
+    }
+
+    // Fallback or default for registration
     // Generate mock OTP after 1 second
     Future.delayed(const Duration(seconds: 1), _generateAndShowMockOtp);
-    _startCountdown();
   }
 
   @override
@@ -93,7 +118,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
   }
 
   void _showOtpNotification() {
-    // Show notification at the top of the screen
+    // Show notification at the top of the screen (Overlay logic)
     final overlay = Overlay.of(context);
     late OverlayEntry overlayEntry;
 
@@ -122,13 +147,15 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
               children: [
                 Icon(Icons.sms, color: AppColors.primary, size: 18),
                 const SizedBox(width: 12),
-                Text(
-                  'Your OTP: $_mockOtp',
-                  style: GoogleFonts.spaceGrotesk(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                    letterSpacing: 2,
+                Expanded(
+                  child: Text(
+                    'Your OTP is: $_mockOtp',
+                    style: GoogleFonts.spaceGrotesk(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      letterSpacing: 2,
+                    ),
                   ),
                 ),
               ],
@@ -142,7 +169,9 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
 
     // Remove after 5 seconds
     Future.delayed(const Duration(seconds: 5), () {
-      overlayEntry.remove();
+      if (overlayEntry.mounted) {
+        overlayEntry.remove();
+      }
     });
   }
 
@@ -202,7 +231,17 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
       // Wait for animation then navigate back
       await Future.delayed(const Duration(milliseconds: 1200));
       if (mounted) {
-        Navigator.pop(context, true); // Return success
+        if (widget.isPasswordReset) {
+          // Navigate to Reset Password Screen
+          // We'll create this screen next
+          Navigator.pushReplacementNamed(
+            context,
+            '/reset-password',
+            arguments: widget.verificationTarget,
+          );
+        } else {
+          Navigator.pop(context, true); // Return success
+        }
       }
     } else {
       setState(() {
@@ -218,7 +257,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
   }
 
   void _resendOtp() {
-    _generateAndShowMockOtp();
+    _initializeOtp();
     _startCountdown();
   }
 
@@ -238,7 +277,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.all(24),
                       child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 400),
+                        constraints: const BoxConstraints(maxWidth: 450),
                         child: GlassPanel(
                           padding: const EdgeInsets.all(32),
                           child: Column(
@@ -364,9 +403,26 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
     );
   }
 
+  String _maskIdentifier(String target) {
+    if (widget.verificationType == 'email') {
+      final parts = target.split('@');
+      if (parts.length != 2) return target;
+      final name = parts[0];
+      final domain = parts[1];
+      if (name.length <= 2) return target;
+      return '${name.substring(0, 2)}*****@$domain';
+    } else {
+      // Phone masking: Only show last two digits
+      if (target.length <= 2) return target;
+      final maskedPart = '*' * (target.length - 2);
+      final lastTwo = target.substring(target.length - 2);
+      return '$maskedPart$lastTwo';
+    }
+  }
+
   Widget _buildSubtitle() {
     return Text(
-      'Enter the 6-digit code sent to\n${widget.verificationTarget}',
+      'Enter the 6-digit code sent to\n${_maskIdentifier(widget.verificationTarget)}',
       textAlign: TextAlign.center,
       style: GoogleFonts.inter(
         fontSize: 14,
@@ -381,8 +437,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: List.generate(6, (index) {
         return SizedBox(
-          width: 46,
-          height: 56,
+          width: 52,
+          height: 60,
           child: RawKeyboardListener(
             focusNode: FocusNode(),
             onKey: (event) => _onKeyDown(index, event),
@@ -429,30 +485,49 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
   }
 
   Widget _buildAutoEnterButton() {
-    return TextButton.icon(
-      onPressed: _mockOtp.isNotEmpty ? _autoFillOtp : null,
-      icon: Icon(
-        Icons.flash_on,
-        color: _mockOtp.isNotEmpty ? AppColors.primary : AppColors.textMuted,
-        size: 18,
-      ),
-      label: Text(
-        'Auto Enter OTP',
-        style: GoogleFonts.inter(
-          fontSize: 13,
-          fontWeight: FontWeight.w500,
-          color: _mockOtp.isNotEmpty ? AppColors.primary : AppColors.textMuted,
-        ),
-      ),
-      style: TextButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(
-            color: _mockOtp.isNotEmpty
-                ? AppColors.primary.withOpacity(0.3)
-                : AppColors.borderLight,
+    final bool isEnabled = _mockOtp.isNotEmpty;
+    return InkWell(
+      onTap: isEnabled ? _autoFillOtp : null,
+      borderRadius: BorderRadius.circular(12),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+        decoration: BoxDecoration(
+          color: isEnabled ? Colors.greenAccent : AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isEnabled
+                ? Colors.greenAccent
+                : AppColors.borderLight.withOpacity(0.5),
           ),
+          boxShadow: isEnabled
+              ? [
+                  BoxShadow(
+                    color: Colors.greenAccent.withOpacity(0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : [],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.flash_on,
+              color: isEnabled ? Colors.black : AppColors.textMuted,
+              size: 18,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Auto Enter OTP',
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: isEnabled ? Colors.black : AppColors.textMuted,
+              ),
+            ),
+          ],
         ),
       ),
     );

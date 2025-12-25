@@ -15,6 +15,9 @@ class CustomTextField extends StatefulWidget {
   final TextInputType keyboardType;
   final String? Function(String?)? validator;
   final void Function(String)? onChanged;
+  final String? errorText;
+  final Widget? prefix;
+  final Widget? suffix;
 
   const CustomTextField({
     super.key,
@@ -28,6 +31,9 @@ class CustomTextField extends StatefulWidget {
     this.keyboardType = TextInputType.text,
     this.validator,
     this.onChanged,
+    this.errorText,
+    this.prefix,
+    this.suffix,
   });
 
   @override
@@ -85,6 +91,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
                 color: AppColors.textPrimary,
               ),
               decoration: InputDecoration(
+                errorText: widget.errorText,
                 hintText: widget.placeholder,
                 hintStyle: GoogleFonts.inter(
                   fontSize: 14,
@@ -94,8 +101,12 @@ class _CustomTextFieldState extends State<CustomTextField> {
                 filled: true,
                 fillColor: AppColors.inputBackground,
                 contentPadding: EdgeInsets.only(
-                  left: widget.prefixIcon != null ? 44 : 16,
-                  right: widget.suffixIcon != null ? 44 : 16,
+                  left: (widget.prefixIcon != null || widget.prefix != null)
+                      ? 44
+                      : 16,
+                  right: (widget.suffixIcon != null || widget.suffix != null)
+                      ? 44
+                      : 16,
                   top: 14,
                   bottom: 14,
                 ),
@@ -110,7 +121,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
                               : AppColors.textMuted,
                         ),
                       )
-                    : null,
+                    : widget.prefix,
                 prefixIconConstraints: const BoxConstraints(
                   minWidth: 44,
                   minHeight: 0,
@@ -127,11 +138,17 @@ class _CustomTextFieldState extends State<CustomTextField> {
                           ),
                         ),
                       )
-                    : null,
+                    : widget.suffix,
                 suffixIconConstraints: const BoxConstraints(
                   minWidth: 44,
                   minHeight: 0,
                 ),
+                errorStyle: GoogleFonts.inter(
+                  color: Colors.red,
+                  fontSize: 11,
+                  height: 1,
+                ),
+                errorMaxLines: 1, // Enforce single line
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide(color: AppColors.borderLight),

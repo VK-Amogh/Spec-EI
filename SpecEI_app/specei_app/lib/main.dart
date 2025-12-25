@@ -5,6 +5,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/app_theme.dart';
 import 'core/env_config.dart';
 import 'screens/login_screen.dart';
+import 'screens/reset_password_screen.dart';
+import 'screens/otp_verification_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -54,7 +56,27 @@ class SpecEIApp extends StatelessWidget {
       title: 'SpecEI',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
-      home: const LoginScreen(),
+      initialRoute: '/',
+      routes: {'/': (context) => const LoginScreen()},
+      onGenerateRoute: (settings) {
+        if (settings.name == '/reset-password') {
+          final identifier = settings.arguments as String? ?? '';
+          return MaterialPageRoute(
+            builder: (context) => ResetPasswordScreen(identifier: identifier),
+          );
+        }
+        if (settings.name == '/otp-verification') {
+          final args = settings.arguments as Map<String, dynamic>;
+          return MaterialPageRoute(
+            builder: (context) => OtpVerificationScreen(
+              verificationType: args['type'],
+              verificationTarget: args['target'],
+              isPasswordReset: args['isPasswordReset'] ?? false,
+            ),
+          );
+        }
+        return null;
+      },
     );
   }
 }

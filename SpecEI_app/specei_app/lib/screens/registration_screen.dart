@@ -10,6 +10,7 @@ import '../services/auth_service.dart';
 import '../services/supabase_service.dart';
 import 'login_screen.dart';
 import 'otp_verification_screen.dart';
+import 'package:intl_phone_number_input/intl_phone_number_input.dart';
 
 /// Registration Screen - SpecEI Account Creation
 /// With Email and Phone OTP Verification Flow
@@ -41,13 +42,44 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   bool _showVerifyEmailButton = false;
   bool _showVerifyPhoneButton = false;
   bool _isCheckingEmail = false;
+  bool _isCheckingPhone = false;
   bool _emailAlreadyExists = false;
+  bool _phoneAlreadyExists = false;
+  String? _emailError;
+
+  // Phone input states
+  PhoneNumber _phoneNumber = PhoneNumber(isoCode: 'IN');
+  String _phoneInitialValue = '';
+
+  // Password requirement states
+  bool _hasMinLength = false;
+  bool _hasUppercase = false;
+  bool _hasLowercase = false;
+  bool _hasSpecialChar = false;
+
+  final Map<String, int> _countryConfigs = {
+    'IN': 10,
+    'US': 10,
+    'GB': 10,
+    'AE': 9,
+    'AU': 9,
+    'JP': 10,
+  };
+
+  final Map<String, String> _dialCodes = {
+    'IN': '+91',
+    'US': '+1',
+    'GB': '+44',
+    'AE': '+971',
+    'AU': '+61',
+    'JP': '+81',
+  };
 
   @override
   void initState() {
     super.initState();
     _emailController.addListener(_onEmailChanged);
-    _phoneController.addListener(_onPhoneChanged);
+    _passwordController.addListener(_onPasswordChanged);
   }
 
   @override
@@ -61,8 +93,26 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   }
 
   void _onEmailChanged() {
-    final email = _emailController.text.toLowerCase().trim();
-    final isValidGmail = email.endsWith('@gmail.com') && email.length > 11;
+    final rawEmail = _emailController.text.trim();
+    String? error;
+
+    if (rawEmail.isEmpty) {
+      error = null;
+    } else if (RegExp(r'[A-Z]').hasMatch(rawEmail)) {
+      error = 'Email must be in all lowercase letters';
+    } else if (!RegExp(
+      r'^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$',
+    ).hasMatch(rawEmail)) {
+      error = 'Please enter a valid email format';
+    } else if (!rawEmail.endsWith('@gmail.com')) {
+      error = 'Please use a Gmail address';
+    }
+
+    final isValidFormat = error == null;
+    final isValidGmail =
+        rawEmail.endsWith('@gmail.com') &&
+        rawEmail.length > 11 &&
+        isValidFormat;
 
     // Reset email exists state when typing
     if (_emailAlreadyExists) {
@@ -70,13 +120,14 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     }
 
     setState(() {
+      _emailError = error;
       _showVerifyEmailButton =
           isValidGmail && !_isEmailVerified && !_emailAlreadyExists;
     });
 
     // Check if email exists when valid
     if (isValidGmail && !_isEmailVerified) {
-      _checkEmailExists(email);
+      _checkEmailExists(rawEmail);
     }
   }
 
@@ -102,11 +153,13 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     }
   }
 
-  void _onPhoneChanged() {
-    final phone = _phoneController.text.replaceAll(RegExp(r'[^0-9]'), '');
-    final isValidPhone = phone.length == 10;
+  void _onPasswordChanged() {
+    final password = _passwordController.text;
     setState(() {
-      _showVerifyPhoneButton = isValidPhone && !_isPhoneVerified;
+      _hasMinLength = password.length >= 8;
+      _hasUppercase = RegExp(r'[A-Z]').hasMatch(password);
+      _hasLowercase = RegExp(r'[a-z]').hasMatch(password);
+      _hasSpecialChar = RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(password);
     });
   }
 
@@ -155,6 +208,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         _isEmailVerified = true;
         _showVerifyEmailButton = false;
       });
+      // Store email verification in Supabase
+      _supabaseService.updateEmailVerification(_emailController.text, true);
     }
   }
 
@@ -164,7 +219,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       PageRouteBuilder(
         pageBuilder: (_, __, ___) => OtpVerificationScreen(
           verificationType: 'phone',
-          verificationTarget: '+91 ${_phoneController.text}',
+          verificationTarget:
+              '${_dialCodes[_phoneNumber.isoCode] ?? "+91"} ${_phoneController.text.replaceAll(RegExp(r'[^0-9]'), '')}',
         ),
         transitionsBuilder: (_, animation, __, child) {
           return SlideTransition(
@@ -187,6 +243,12 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         _isPhoneVerified = true;
         _showVerifyPhoneButton = false;
       });
+      // Store phone verification in Supabase
+      _supabaseService.updatePhoneVerification(
+        _emailController.text,
+        '${_dialCodes[_phoneNumber.isoCode] ?? "+91"}${_phoneController.text.replaceAll(RegExp(r'[^0-9]'), '')}',
+        true,
+      );
     }
   }
 
@@ -211,11 +273,22 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
       // Store user profile in Supabase
       if (credential.user != null) {
+        final rawDigits = _phoneController.text.replaceAll(
+          RegExp(r'[^0-9]'),
+          '',
+        );
+        final dialCode =
+            _dialCodes[_phoneNumber.isoCode]?.replaceAll(
+              RegExp(r'[^0-9]'),
+              '',
+            ) ??
+            '91';
+        final fullPhone = '+$dialCode$rawDigits';
         await _supabaseService.createUserProfile(
           firebaseUid: credential.user!.uid,
-          email: _emailController.text,
-          fullName: _nameController.text,
-          phoneNumber: '+91${_phoneController.text}',
+          email: _emailController.text.trim(),
+          fullName: _nameController.text.trim(),
+          phoneNumber: fullPhone,
         );
       }
 
@@ -388,97 +461,69 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   }
 
   Widget _buildNameField() {
-    final isLocked = _isEmailVerified;
-    return Opacity(
-      opacity: isLocked ? 0.6 : 1.0,
-      child: IgnorePointer(
-        ignoring: isLocked,
-        child: Stack(
-          children: [
-            CustomTextField(
-              label: 'Full Name',
-              placeholder: 'Enter your name',
-              prefixIcon: Icons.person_outline,
-              controller: _nameController,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter your name';
-                }
-                return null;
-              },
-            ),
-            if (isLocked)
-              Positioned(
-                right: 12,
-                top: 32,
-                child: Icon(Icons.lock, color: AppColors.textMuted, size: 18),
-              ),
-          ],
-        ),
-      ),
+    return CustomTextField(
+      label: 'Full Name',
+      placeholder: 'Enter your name',
+      prefixIcon: Icons.person_outline,
+      controller: _nameController,
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Please enter your name';
+        }
+        return null;
+      },
     );
   }
 
   Widget _buildEmailField() {
-    final isLocked = _isEmailVerified;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Opacity(
-          opacity: isLocked ? 0.6 : 1.0,
-          child: IgnorePointer(
-            ignoring: isLocked,
-            child: Stack(
-              children: [
-                CustomTextField(
-                  label: 'Email Address',
-                  placeholder: 'name@gmail.com',
-                  prefixIcon: Icons.mail_outline,
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your email';
-                    }
-                    if (!value.toLowerCase().endsWith('@gmail.com')) {
-                      return 'Please use a Gmail address';
-                    }
-                    return null;
-                  },
-                ),
-                if (_isEmailVerified)
-                  Positioned(
-                    right: 12,
-                    top: 32,
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.check_circle,
-                          color: AppColors.primary,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 4),
-                        Icon(Icons.lock, color: AppColors.textMuted, size: 18),
-                      ],
-                    ),
-                  ),
-                if (_isCheckingEmail && !_isEmailVerified)
-                  Positioned(
-                    right: 12,
-                    top: 32,
-                    child: SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
+        IgnorePointer(
+          ignoring: _isEmailVerified,
+          child: Opacity(
+            opacity: _isEmailVerified ? 0.7 : 1.0,
+            child: CustomTextField(
+              label: 'Email Address',
+              placeholder: 'name@gmail.com',
+              prefixIcon: Icons.mail_outline,
+              controller: _emailController,
+              keyboardType: TextInputType.emailAddress,
+              errorText: _emailError,
+              suffix: _isEmailVerified
+                  ? const Padding(
+                      padding: EdgeInsets.only(right: 12),
+                      child: Icon(
+                        Icons.check_circle,
                         color: AppColors.primary,
+                        size: 20,
                       ),
-                    ),
-                  ),
-              ],
+                    )
+                  : null,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please enter your email';
+                }
+                if (RegExp(r'[A-Z]').hasMatch(value)) {
+                  return 'Email must be in all lowercase letters';
+                }
+                if (!value.toLowerCase().endsWith('@gmail.com')) {
+                  return 'Please use a Gmail address';
+                }
+                if (!RegExp(
+                  r'^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$',
+                ).hasMatch(value)) {
+                  return 'Please enter a valid email format';
+                }
+                return null;
+              },
             ),
           ),
         ),
+        if (_showVerifyEmailButton) ...[
+          const SizedBox(height: 8),
+          _buildVerifyButton(label: 'Verify Email', onPressed: _verifyEmail),
+        ],
         if (_emailAlreadyExists) ...[
           const SizedBox(height: 8),
           Container(
@@ -505,10 +550,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
             ),
           ),
         ],
-        if (_showVerifyEmailButton) ...[
-          const SizedBox(height: 12),
-          _buildVerifyButton(label: 'Verify Email', onPressed: _verifyEmail),
-        ],
       ],
     );
   }
@@ -526,137 +567,155 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
               : (isLocked ? 0.6 : 1.0),
           child: IgnorePointer(
             ignoring: !isEnabled,
-            child: Stack(
+            child: Row(
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(left: 4, bottom: 6),
-                      child: Text(
-                        'Phone Number',
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.textMuted,
-                        ),
+                // Country Dropdown beside the textbox
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.inputBackground,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.borderLight),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _phoneNumber.isoCode,
+                      dropdownColor: AppColors.surface,
+                      icon: const Icon(
+                        Icons.arrow_drop_down,
+                        color: AppColors.textMuted,
+                        size: 20,
                       ),
-                    ),
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        color: AppColors.inputBackground,
-                        border: Border.all(color: AppColors.borderLight),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 14,
-                            ),
-                            decoration: BoxDecoration(
-                              border: Border(
-                                right: BorderSide(color: AppColors.borderLight),
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.phone_android,
-                                  size: 20,
-                                  color: AppColors.textMuted,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  '+91',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                              ],
-                            ),
+                      onChanged: (String? newValue) {
+                        if (newValue != null) {
+                          setState(() {
+                            _phoneNumber = PhoneNumber(isoCode: newValue);
+                            _onPhoneChanged(); // Re-validate with new country
+                          });
+                        }
+                      },
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'IN',
+                          child: Text(
+                            '🇮🇳 +91',
+                            style: TextStyle(color: AppColors.textPrimary),
                           ),
-                          Expanded(
-                            child: TextFormField(
-                              controller: _phoneController,
-                              keyboardType: TextInputType.phone,
-                              maxLength: 10,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                              ],
-                              style: GoogleFonts.inter(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.textPrimary,
-                              ),
-                              decoration: InputDecoration(
-                                counterText: '',
-                                hintText: '10 digit number',
-                                hintStyle: GoogleFonts.inter(
-                                  fontSize: 14,
-                                  color: AppColors.textMuted,
-                                ),
-                                border: InputBorder.none,
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 14,
-                                ),
-                              ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please enter phone number';
-                                }
-                                if (value.length != 10) {
-                                  return 'Phone number must be 10 digits';
-                                }
-                                return null;
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                if (_isPhoneVerified)
-                  Positioned(
-                    right: 12,
-                    top: 32,
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.check_circle,
-                          color: AppColors.primary,
-                          size: 20,
                         ),
-                        const SizedBox(width: 4),
-                        Icon(Icons.lock, color: AppColors.textMuted, size: 18),
+                        DropdownMenuItem(
+                          value: 'US',
+                          child: Text(
+                            '🇺🇸 +1',
+                            style: TextStyle(color: AppColors.textPrimary),
+                          ),
+                        ),
+                        DropdownMenuItem(
+                          value: 'GB',
+                          child: Text(
+                            '🇬🇧 +44',
+                            style: TextStyle(color: AppColors.textPrimary),
+                          ),
+                        ),
+                        DropdownMenuItem(
+                          value: 'AE',
+                          child: Text(
+                            '🇦🇪 +971',
+                            style: TextStyle(color: AppColors.textPrimary),
+                          ),
+                        ),
+                        DropdownMenuItem(
+                          value: 'AU',
+                          child: Text(
+                            '🇦🇺 +61',
+                            style: TextStyle(color: AppColors.textPrimary),
+                          ),
+                        ),
+                        DropdownMenuItem(
+                          value: 'JP',
+                          child: Text(
+                            '🇯🇵 +81',
+                            style: TextStyle(color: AppColors.textPrimary),
+                          ),
+                        ),
                       ],
                     ),
                   ),
-                if (!_isEmailVerified && !_isPhoneVerified)
-                  Positioned(
-                    right: 12,
-                    top: 32,
-                    child: Icon(
-                      Icons.lock_outline,
-                      color: AppColors.textDimmed,
-                      size: 20,
-                    ),
+                ),
+                const SizedBox(width: 12),
+                // Textbox for phone number
+                Expanded(
+                  child: CustomTextField(
+                    placeholder: 'Mobile Number',
+                    controller: _phoneController,
+                    keyboardType: TextInputType.phone,
+                    onChanged: (_) => _onPhoneChanged(),
                   ),
+                ),
               ],
             ),
           ),
         ),
-        if (_showVerifyPhoneButton && _isEmailVerified) ...[
-          const SizedBox(height: 12),
+        if (_showVerifyPhoneButton) ...[
+          const SizedBox(height: 8),
           _buildVerifyButton(label: 'Verify Phone', onPressed: _verifyPhone),
         ],
       ],
     );
+  }
+
+  void _onPhoneChanged() {
+    final phone = _phoneController.text.replaceAll(RegExp(r'[^0-9]'), '');
+    final requiredLength = _countryConfigs[_phoneNumber.isoCode] ?? 10;
+
+    final isValidLength = phone.length == requiredLength;
+
+    // Reset phone exists state when typing
+    if (_phoneAlreadyExists) {
+      setState(() => _phoneAlreadyExists = false);
+    }
+
+    setState(() {
+      _showVerifyPhoneButton =
+          isValidLength && !_isPhoneVerified && !_phoneAlreadyExists;
+    });
+
+    // Check if phone exists when length is valid
+    if (isValidLength && !_isPhoneVerified) {
+      final dialCode = _dialCodes[_phoneNumber.isoCode] ?? '+91';
+      _checkPhoneExists('$dialCode$phone');
+    }
+  }
+
+  Future<void> _checkPhoneExists(String fullPhone) async {
+    if (_isCheckingPhone) return;
+
+    setState(() => _isCheckingPhone = true);
+
+    try {
+      final exists = await _supabaseService.phoneExists(fullPhone);
+      if (mounted) {
+        final currentDigits = _phoneController.text.replaceAll(
+          RegExp(r'[^0-9]'),
+          '',
+        );
+        final currentDial = _dialCodes[_phoneNumber.isoCode] ?? '+91';
+        if ('$currentDial$currentDigits' == fullPhone) {
+          setState(() {
+            _phoneAlreadyExists = exists;
+            _showVerifyPhoneButton = !exists && !_isPhoneVerified;
+          });
+        }
+      }
+    } catch (e) {
+      // Silently fail
+    } finally {
+      if (mounted) {
+        setState(() => _isCheckingPhone = false);
+      }
+    }
   }
 
   Widget _buildPasswordFields() {
@@ -687,8 +746,17 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     if (value == null || value.isEmpty) {
                       return 'Please enter a password';
                     }
-                    if (value.length < 6) {
-                      return 'Password must be at least 6 characters';
+                    if (value.length < 8) {
+                      return 'Password must be at least 8 characters';
+                    }
+                    if (!RegExp(r'[A-Z]').hasMatch(value)) {
+                      return 'Must contain at least one uppercase letter';
+                    }
+                    if (!RegExp(r'[a-z]').hasMatch(value)) {
+                      return 'Must contain at least one lowercase letter';
+                    }
+                    if (!RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(value)) {
+                      return 'Must contain at least one special character';
                     }
                     return null;
                   },
@@ -705,6 +773,10 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   ),
               ],
             ),
+            if (_passwordController.text.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _buildPasswordRequirements(),
+            ],
             const SizedBox(height: 20),
             Stack(
               children: [
@@ -775,35 +847,93 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     );
   }
 
+  Widget _buildPasswordRequirements() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.inputBackground.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.borderLight),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Security Requirements:',
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _buildRequirementItem('Minimum 8 characters', _hasMinLength),
+          _buildRequirementItem(
+            'Upper & lower case letters',
+            _hasUppercase && _hasLowercase,
+          ),
+          _buildRequirementItem(
+            'Special character (!@#\$%^&*)',
+            _hasSpecialChar,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRequirementItem(String label, bool isMet) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          Icon(
+            isMet ? Icons.check_circle : Icons.circle_outlined,
+            size: 14,
+            color: isMet ? AppColors.primary : AppColors.textMuted,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 11,
+              color: isMet ? AppColors.textPrimary : AppColors.textMuted,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildVerifyButton({
     required String label,
     required VoidCallback onPressed,
   }) {
-    return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton(
-        onPressed: onPressed,
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          side: BorderSide(color: AppColors.primary.withOpacity(0.5)),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.verified_outlined, color: AppColors.primary, size: 20),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppColors.primary,
+    return Align(
+      alignment: Alignment.centerRight,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: AppColors.primary,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withOpacity(0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
               ),
+            ],
+          ),
+          child: Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
             ),
-          ],
+          ),
         ),
       ),
     );
