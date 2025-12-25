@@ -46,7 +46,7 @@ app.*.map.json
 
 # Secrets and sensitive configuration
 /lib/core/env_config.dart
-/google-services.json
+**/google-services.json
 /ios/Runner/GoogleService-Info.plist
 .env
 !*.template
