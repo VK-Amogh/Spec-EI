@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Live Chat Assistant Ultimate UI - Pure Black Redesign</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#10b981", // Emerald 500 - Deep Green
+                        "primary-glow": "#34d399", // Emerald 400
+                        "surface-dark": "#000000",
+                        "surface-card": "#121212", // Very dark grey
+                        "surface-card-hover": "#1a1a1a",
+                        "text-secondary": "#a3a3a3",
+                    },
+                    fontFamily: {
+                        display: ["Inter", "sans-serif"],
+                        mono: ["JetBrains Mono", "monospace"],
+                    },
+                    boxShadow: {
+                        'float': '0 20px 40px -10px rgba(0,0,0,0.8)',
+                    }
+                },
+            },
+        };
+    </script>
+<style>
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        body {
+            background-color: #000000;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        .filled-icon {
+            font-variation-settings: 'FILL' 1, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-black text-gray-100 font-display min-h-screen flex flex-col antialiased selection:bg-primary/30 selection:text-white transition-colors duration-300">
+<header class="fixed top-0 w-full z-50 bg-black/80 backdrop-blur-xl border-b border-white/[0.06] transition-all duration-300">
+<div class="max-w-md mx-auto px-6 h-16 flex items-center justify-between">
+<button class="text-white/70 hover:text-white transition-colors">
+<span class="material-symbols-outlined text-[28px]">arrow_back</span>
+</button>
+<div class="flex flex-col items-center">
+<div class="flex items-center gap-2">
+<span class="text-[15px] font-medium tracking-tight text-white">Assistant</span>
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+</span>
+</div>
+<span class="text-[10px] uppercase tracking-wider text-primary font-medium mt-0.5 opacity-90">Live Glasses</span>
+</div>
+<div class="flex items-center gap-4">
+<button class="relative text-white/70 hover:text-white transition-colors group">
+<span class="material-symbols-outlined text-[24px]">group_add</span>
+<span class="absolute top-0 right-0 h-1.5 w-1.5 bg-blue-500 rounded-full"></span>
+</button>
+<div class="h-8 w-8 rounded-full overflow-hidden border border-white/10 ring-2 ring-transparent group-hover:ring-white/10 transition-all">
+<img alt="User Avatar" class="h-full w-full object-cover opacity-90 hover:opacity-100" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCI6qHMFkr_Y9Bu_i2UScq7giDxrxH9AhK1zYSVJ7KbLHz-PnldOHbu8YRaGyj8uYBiMa_ePBJeFILtPBIWe6YkWssrOe6rlNhph4mIkDRgMh5hFlgl9_Q3Kj0jQTRrMJ6T9X1b2QDrAR_QJf-qeuuMJfcLzVposG_3LcVHB8HbK4bcFPeGmtoypjW6_J5c58ZbwI_GVw85J2qJVwTDgN1fqKyGPliGMVc9fMUhdFxu18bMyZ14wla357_20Prgu7FkHP2nQ6DFbNQ"/>
+</div>
+</div>
+</div>
+</header>
+<main class="flex-grow pt-24 pb-48 px-4 overflow-y-auto no-scrollbar w-full max-w-md mx-auto space-y-8">
+<div class="flex justify-end w-full pl-12">
+<div class="bg-surface-card hover:bg-surface-card-hover text-white px-5 py-3.5 rounded-[20px] rounded-tr-md max-w-full transition-colors duration-200">
+<p class="text-[15px] font-normal leading-relaxed text-gray-200">Where did I put my wallet?</p>
+</div>
+</div>
+<div class="flex flex-col items-start w-full pr-4">
+<div class="bg-surface-card hover:bg-surface-card-hover rounded-[24px] p-5 w-full transition-colors duration-200 group">
+<p class="text-[15px] font-normal leading-relaxed text-gray-300 mb-5">
+                    I saw you place it in the top drawer of your nightstand last night when you got home.
+                </p>
+<div class="flex items-center justify-between mb-5">
+<div class="flex items-center gap-2">
+<span class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-pink-500/10 text-pink-400 text-[11px] font-semibold tracking-wide border border-pink-500/10">
+<span class="material-symbols-outlined text-[14px]">psychology</span>
+                            MEMORY
+                        </span>
+</div>
+<span class="flex items-center gap-1.5 text-[10px] text-gray-500 uppercase tracking-wider font-mono">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                        High Confidence
+                    </span>
+</div>
+<div class="bg-black/40 rounded-2xl p-4 border border-white/[0.03]">
+<div class="flex items-start gap-3.5">
+<div class="h-10 w-10 rounded-full bg-surface-card border border-white/5 flex items-center justify-center shrink-0 text-gray-400">
+<span class="material-symbols-outlined text-[20px]">history</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-baseline mb-0.5">
+<p class="text-[11px] text-gray-500 font-medium">Yesterday • 11:23 PM</p>
+</div>
+<p class="text-[13px] text-gray-200 font-medium truncate">Wallet placed in nightstand</p>
+</div>
+<button class="text-primary hover:text-primary-glow text-[11px] font-semibold transition-colors px-2 py-1">VIEW</button>
+</div>
+<button class="w-full mt-3 py-2.5 bg-surface-card hover:bg-[#1f1f1f] rounded-xl text-[12px] font-medium text-gray-400 hover:text-white transition-all flex items-center justify-center gap-2 border border-white/[0.02]">
+<span class="material-symbols-outlined text-[18px]">play_arrow</span>
+                        Play Audio Context
+                    </button>
+</div>
+</div>
+</div>
+<div class="flex justify-end w-full pl-12">
+<div class="bg-surface-card hover:bg-surface-card-hover text-white px-5 py-3.5 rounded-[20px] rounded-tr-md max-w-full transition-colors duration-200">
+<p class="text-[15px] font-normal leading-relaxed text-gray-200">What am I looking at right now?</p>
+</div>
+</div>
+<div class="flex flex-col items-start w-full pr-4">
+<div class="bg-surface-card hover:bg-surface-card-hover rounded-[24px] p-5 w-full transition-colors duration-200">
+<p class="text-[15px] font-normal leading-relaxed text-gray-300 mb-5">
+                    You are holding a bottle of sparkling water. It looks like San Pellegrino based on the red star logo.
+                </p>
+<div class="flex items-center gap-2">
+<span class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-semibold tracking-wide border border-primary/10">
+<span class="material-symbols-outlined text-[14px]">visibility</span>
+                        LIVE VISION
+                    </span>
+<button class="px-3 py-1 rounded-full bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 text-[11px] font-medium transition-colors border border-transparent hover:border-white/5">
+                        Transcript
+                    </button>
+</div>
+</div>
+</div>
+<div class="flex justify-end w-full pl-12">
+<div class="bg-surface-card hover:bg-surface-card-hover text-white px-5 py-3.5 rounded-[20px] rounded-tr-md max-w-full transition-colors duration-200">
+<p class="text-[15px] font-normal leading-relaxed text-gray-200">Is it healthy?</p>
+</div>
+</div>
+<div class="flex flex-col items-start w-full pr-4">
+<div class="bg-surface-card hover:bg-surface-card-hover rounded-[24px] p-5 w-full transition-colors duration-200">
+<p class="text-[15px] font-normal leading-relaxed text-gray-300 mb-4">
+                    Generally, yes. It has zero calories and no sugar.
+                </p>
+<div class="relative pl-3.5 border-l-[2px] border-primary/30 mb-5">
+<p class="text-[14px] leading-relaxed text-gray-400">
+                        However, you mentioned last week you were trying to reduce sodium, and this brand has 10mg per serving.
+                    </p>
+</div>
+<div class="flex flex-wrap items-center justify-between gap-y-2">
+<div class="flex items-center gap-2">
+<span class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 text-[11px] font-semibold tracking-wide border border-blue-500/10">
+<span class="material-symbols-outlined text-[14px]">public</span>
+                            WEB
+                        </span>
+<span class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-pink-500/10 text-pink-400 text-[11px] font-semibold tracking-wide border border-pink-500/10">
+<span class="material-symbols-outlined text-[14px]">psychology</span>
+                            MEMORY
+                        </span>
+</div>
+<span class="flex items-center gap-1.5 text-[10px] text-amber-500 uppercase tracking-wider font-mono font-medium">
+<span class="material-symbols-outlined filled-icon text-[14px]">warning</span>
+                        Alert
+                    </span>
+</div>
+</div>
+</div>
+</main>
+<div class="fixed bottom-0 w-full z-40 pb-6 pt-12 px-4 pointer-events-none">
+<div class="absolute inset-0 bg-gradient-to-t from-black via-black/95 to-transparent pointer-events-none"></div>
+<div class="max-w-md mx-auto pointer-events-auto relative z-10 space-y-5">
+<div class="flex overflow-x-auto no-scrollbar gap-2.5 px-1 pb-1">
+<button class="whitespace-nowrap px-4 py-2.5 rounded-full bg-surface-card hover:bg-surface-card-hover border border-white/[0.04] text-xs font-medium text-gray-400 hover:text-white transition-all shadow-lg hover:border-primary/20">
+                    What's on my schedule?
+                </button>
+<button class="whitespace-nowrap px-4 py-2.5 rounded-full bg-surface-card hover:bg-surface-card-hover border border-white/[0.04] text-xs font-medium text-gray-400 hover:text-white transition-all shadow-lg hover:border-primary/20">
+                    Show recent memories
+                </button>
+<button class="whitespace-nowrap px-4 py-2.5 rounded-full bg-surface-card hover:bg-surface-card-hover border border-white/[0.04] text-xs font-medium text-gray-400 hover:text-white transition-all shadow-lg hover:border-primary/20">
+                    Summarize my day
+                </button>
+</div>
+<div class="flex items-center gap-3">
+<div class="flex-1 relative group">
+<input class="w-full bg-surface-card text-gray-200 rounded-[28px] py-4 pl-12 pr-5 text-[15px] focus:ring-1 focus:ring-primary/40 focus:outline-none border border-white/5 placeholder-gray-600 shadow-xl transition-all group-hover:border-white/10" placeholder="Ask anything..." type="text"/>
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 group-hover:text-gray-400 transition-colors">keyboard</span>
+</div>
+<button class="h-14 w-14 rounded-full bg-primary text-black flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.15)] hover:shadow-[0_0_25px_rgba(16,185,129,0.3)] hover:scale-105 active:scale-95 transition-all">
+<span class="material-symbols-outlined filled-icon text-[26px]">mic</span>
+</button>
+</div>
+<nav class="bg-[#111111]/90 backdrop-blur-xl rounded-full p-1.5 flex justify-between items-center px-6 border border-white/[0.08] shadow-float max-w-[340px] mx-auto">
+<button class="p-3 text-primary relative flex flex-col items-center justify-center">
+<span class="material-symbols-outlined filled-icon text-[26px]">chat_bubble</span>
+<span class="absolute -bottom-1 w-1 h-1 bg-primary rounded-full"></span>
+</button>
+<button class="p-3 text-gray-600 hover:text-gray-300 transition-colors">
+<span class="material-symbols-outlined text-[26px]">psychology</span>
+</button>
+<button class="p-3 text-gray-600 hover:text-gray-300 transition-colors">
+<span class="material-symbols-outlined text-[26px]">smart_toy</span>
+</button>
+<button class="p-3 text-gray-600 hover:text-gray-300 transition-colors">
+<span class="material-symbols-outlined text-[26px]">settings</span>
+</button>
+</nav>
+</div>
+</div>
+
+</body></html>
