@@ -9,7 +9,10 @@ import '../services/auth_service.dart';
 import '../services/supabase_service.dart';
 import 'registration_screen.dart';
 import 'forgot_password_screen.dart';
+<<<<<<< HEAD
 import 'main_screen.dart';
+=======
+>>>>>>> Homepage
 
 /// Login Screen - SpecEI Authentication
 /// Matches design from _ai_hub_ultimate_ui_3
@@ -51,14 +54,21 @@ class _LoginScreenState extends State<LoginScreen> {
         _emailController.text,
         _passwordController.text,
       );
+<<<<<<< HEAD
       // Navigate to MainScreen on success
       if (mounted) {
+=======
+      // Navigate to home on success
+      if (mounted) {
+        // Navigation will be handled by auth state listener in main.dart
+>>>>>>> Homepage
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Login successful!'),
             backgroundColor: AppColors.primaryDark,
           ),
         );
+<<<<<<< HEAD
         Navigator.pushReplacement(
           context,
           PageRouteBuilder(
@@ -69,6 +79,8 @@ class _LoginScreenState extends State<LoginScreen> {
             transitionDuration: const Duration(milliseconds: 300),
           ),
         );
+=======
+>>>>>>> Homepage
       }
     } catch (e) {
       setState(() => _errorMessage = e.toString());
@@ -104,6 +116,7 @@ class _LoginScreenState extends State<LoginScreen> {
               backgroundColor: AppColors.primaryDark,
             ),
           );
+<<<<<<< HEAD
           Navigator.pushReplacement(
             context,
             PageRouteBuilder(
@@ -114,6 +127,8 @@ class _LoginScreenState extends State<LoginScreen> {
               transitionDuration: const Duration(milliseconds: 300),
             ),
           );
+=======
+>>>>>>> Homepage
         }
       } else if (mounted) {
         setState(() => _errorMessage = 'Google sign in was cancelled');

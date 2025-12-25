@@ -10,7 +10,10 @@ import '../services/auth_service.dart';
 import '../services/supabase_service.dart';
 import 'login_screen.dart';
 import 'otp_verification_screen.dart';
+<<<<<<< HEAD
 import 'main_screen.dart';
+=======
+>>>>>>> Homepage
 
 /// Registration Screen - SpecEI Account Creation
 /// With Email and Phone OTP Verification Flow
@@ -246,14 +249,22 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           ),
         );
 
+<<<<<<< HEAD
         // Navigate to MainScreen with smooth fade transition
+=======
+        // Navigate to login with smooth fade transition
+>>>>>>> Homepage
         await Future.delayed(const Duration(milliseconds: 500));
         if (mounted) {
           Navigator.pushReplacement(
             context,
             PageRouteBuilder(
               pageBuilder: (context, animation, secondaryAnimation) =>
+<<<<<<< HEAD
                   const MainScreen(),
+=======
+                  const LoginScreen(),
+>>>>>>> Homepage
               transitionsBuilder:
                   (context, animation, secondaryAnimation, child) {
                     return FadeTransition(opacity: animation, child: child);
