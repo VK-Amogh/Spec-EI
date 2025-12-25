@@ -88,18 +88,23 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
+            content: const Text(
               'Password reset successfully! Please login with your new password.',
             ),
             backgroundColor: AppColors.primaryDark,
           ),
         );
-        Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+        // Pop until we are back at the root (LoginScreen)
+        Navigator.of(context).popUntil((route) => route.isFirst);
       }
     } catch (e) {
-      setState(() => _errorMessage = e.toString());
+      if (mounted) {
+        setState(() => _errorMessage = e.toString());
+      }
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 

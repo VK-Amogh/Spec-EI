@@ -9,6 +9,7 @@ import '../services/auth_service.dart';
 import '../services/supabase_service.dart';
 import 'registration_screen.dart';
 import 'forgot_password_screen.dart';
+import 'main_screen.dart';
 
 /// Login Screen - SpecEI Authentication
 /// Matches design from _ai_hub_ultimate_ui_3
@@ -110,6 +111,10 @@ class _LoginScreenState extends State<LoginScreen> {
             backgroundColor: AppColors.primaryDark,
           ),
         );
+        // Explicitly navigate to MainScreen to ensure redirection
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const MainScreen()),
+        );
       }
     } catch (e) {
       setState(() => _errorMessage = e.toString());
@@ -144,6 +149,10 @@ class _LoginScreenState extends State<LoginScreen> {
               content: Text('Login successful!'),
               backgroundColor: AppColors.primaryDark,
             ),
+          );
+          // Explicitly navigate to MainScreen to ensure redirection
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const MainScreen()),
           );
         }
       } else if (mounted) {

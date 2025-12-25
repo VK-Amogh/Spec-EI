@@ -62,6 +62,11 @@ class SpecEIApp extends StatelessWidget {
       home: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(),
         builder: (context, snapshot) {
+          // Debug print to track auth state
+          debugPrint(
+            'StreamBuilder Rebuild: connectionState=${snapshot.connectionState}, hasData=${snapshot.hasData}, user=${snapshot.data?.email}',
+          );
+
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Scaffold(
               body: Center(child: CircularProgressIndicator()),
