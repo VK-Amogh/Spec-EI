@@ -9,10 +9,6 @@ import '../services/auth_service.dart';
 import '../services/supabase_service.dart';
 import 'registration_screen.dart';
 import 'forgot_password_screen.dart';
-<<<<<<< HEAD
-import 'main_screen.dart';
-=======
->>>>>>> Homepage
 
 /// Login Screen - SpecEI Authentication
 /// Matches design from _ai_hub_ultimate_ui_3
@@ -33,12 +29,63 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   bool _obscurePassword = true;
   String? _errorMessage;
+  String? _emailValidationError;
+  bool? _accountExists;
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController.addListener(_onEmailChanged);
+  }
 
   @override
   void dispose() {
+    _emailController.removeListener(_onEmailChanged);
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  void _onEmailChanged() {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      setState(() {
+        _emailValidationError = null;
+        _accountExists = null;
+      });
+      return;
+    }
+
+    // Check conditions
+    String? error;
+    bool isValid = RegExp(r'^[a-z0-9._%+-]+@gmail\.com$').hasMatch(email);
+
+    if (!isValid) {
+      error = 'Please enter a valid email';
+    }
+
+    setState(() {
+      _emailValidationError = error;
+      if (error != null) _accountExists = null;
+    });
+
+    // If valid, check if it exists in DB
+    if (error == null) {
+      _checkAccountExistence(email);
+    }
+  }
+
+  Future<void> _checkAccountExistence(String email) async {
+    try {
+      final exists = await _supabaseService.emailExists(email);
+      if (mounted && _emailController.text.trim() == email) {
+        setState(() {
+          _accountExists = exists;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error checking account existence: $e');
+    }
   }
 
   Future<void> _handleLogin() async {
@@ -54,33 +101,15 @@ class _LoginScreenState extends State<LoginScreen> {
         _emailController.text,
         _passwordController.text,
       );
-<<<<<<< HEAD
-      // Navigate to MainScreen on success
-      if (mounted) {
-=======
       // Navigate to home on success
       if (mounted) {
         // Navigation will be handled by auth state listener in main.dart
->>>>>>> Homepage
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Login successful!'),
             backgroundColor: AppColors.primaryDark,
           ),
         );
-<<<<<<< HEAD
-        Navigator.pushReplacement(
-          context,
-          PageRouteBuilder(
-            pageBuilder: (_, __, ___) => const MainScreen(),
-            transitionsBuilder: (_, animation, __, child) {
-              return FadeTransition(opacity: animation, child: child);
-            },
-            transitionDuration: const Duration(milliseconds: 300),
-          ),
-        );
-=======
->>>>>>> Homepage
       }
     } catch (e) {
       setState(() => _errorMessage = e.toString());
@@ -116,19 +145,6 @@ class _LoginScreenState extends State<LoginScreen> {
               backgroundColor: AppColors.primaryDark,
             ),
           );
-<<<<<<< HEAD
-          Navigator.pushReplacement(
-            context,
-            PageRouteBuilder(
-              pageBuilder: (_, __, ___) => const MainScreen(),
-              transitionsBuilder: (_, animation, __, child) {
-                return FadeTransition(opacity: animation, child: child);
-              },
-              transitionDuration: const Duration(milliseconds: 300),
-            ),
-          );
-=======
->>>>>>> Homepage
         }
       } else if (mounted) {
         setState(() => _errorMessage = 'Google sign in was cancelled');
@@ -190,22 +206,45 @@ class _LoginScreenState extends State<LoginScreen> {
                                 const SizedBox(height: 16),
                               ],
 
-                              // Email field
-                              CustomTextField(
-                                label: 'EMAIL',
-                                placeholder: 'name@example.com',
-                                prefixIcon: Icons.mail_outline,
-                                controller: _emailController,
-                                keyboardType: TextInputType.emailAddress,
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Please enter your email';
-                                  }
-                                  if (!value.contains('@')) {
-                                    return 'Please enter a valid email';
-                                  }
-                                  return null;
-                                },
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  CustomTextField(
+                                    label: 'EMAIL',
+                                    placeholder: 'name@gmail.com',
+                                    prefixIcon: Icons.mail_outline,
+                                    controller: _emailController,
+                                    keyboardType: TextInputType.emailAddress,
+                                    errorText: _emailValidationError,
+                                    onChanged: (_) => _onEmailChanged(),
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return 'Please enter your email';
+                                      }
+                                      return _emailValidationError;
+                                    },
+                                  ),
+                                  if (_accountExists != null &&
+                                      _emailValidationError == null)
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        top: 6,
+                                        left: 4,
+                                      ),
+                                      child: Text(
+                                        _accountExists!
+                                            ? '✓ Account found'
+                                            : 'No account found with this email',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                          color: _accountExists!
+                                              ? Colors.greenAccent
+                                              : Colors.redAccent,
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               ),
                               const SizedBox(height: 20),
 
