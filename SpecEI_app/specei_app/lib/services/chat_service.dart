@@ -6,8 +6,11 @@ import 'package:http/http.dart' as http;
 /// Free tier available at console.groq.com
 class ChatService {
   // Get your free API key from: https://console.groq.com/keys
-  static const String _apiKey =
-      'REMOVED_GROQ_KEY';
+  // TODO: Move to env_config.dart for security
+  static const String _apiKey = String.fromEnvironment(
+    'GROQ_API_KEY',
+    defaultValue: 'YOUR_GROQ_API_KEY',
+  );
   static const String _baseUrl =
       'https://api.groq.com/openai/v1/chat/completions';
 
