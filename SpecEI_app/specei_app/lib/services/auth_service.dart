@@ -1,11 +1,13 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'supabase_service.dart';
 
 /// Firebase Authentication Service
 /// Handles all authentication operations
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final SupabaseService _supabaseService = SupabaseService();
 
   // GoogleSignIn is only supported on mobile platforms
   GoogleSignIn? _googleSignIn;
@@ -35,7 +37,7 @@ class AuthService {
         email: email.trim(),
         password: password,
       );
-    } on FirebaseException catch (e) {
+    } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
     }
   }
@@ -43,19 +45,12 @@ class AuthService {
   /// Create account with email and password
   Future<UserCredential> signUpWithEmail(String email, String password) async {
     try {
-      debugPrint('Attempting to create user with email: $email');
-      final result = await _auth.createUserWithEmailAndPassword(
+      return await _auth.createUserWithEmailAndPassword(
         email: email.trim(),
         password: password,
       );
-      debugPrint('User created successfully: ${result.user?.uid}');
-      return result;
-    } on FirebaseException catch (e) {
-      debugPrint('Firebase signup error: ${e.code} - ${e.message}');
+    } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
-    } catch (e) {
-      debugPrint('Unexpected signup error: $e');
-      rethrow;
     }
   }
 
@@ -100,34 +95,69 @@ class AuthService {
   /// Send password reset email
   Future<void> sendPasswordResetEmail(String email) async {
     try {
+      // 1. Check if email exists in our database
+      final exists = await _supabaseService.emailExists(email);
+      if (!exists) {
+        throw 'No account found with this email address.';
+      }
+
+      // 2. Generate and store the request in the database
+      final userData = await _supabaseService.getUserByEmail(email.trim());
+      final phoneNumber = userData?['phone_number'] as String?;
+
+      final code = _generateOTP();
+      await _supabaseService.storePasswordResetRequest(
+        identifier: email.trim(),
+        email: email.trim(),
+        phoneNumber: phoneNumber,
+        type: 'email',
+        code: code,
+      );
+
+      // 3. Send the reset link via Firebase
       await _auth.sendPasswordResetEmail(email: email.trim());
-    } on FirebaseException catch (e) {
+      debugPrint('Generated Code for Email Reset: $code');
+    } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
     }
   }
 
-  /// Send password reset via phone (starts phone verification)
-  Future<void> sendPasswordResetPhone(
-    String phoneNumber, {
-    required Function(String verificationId) onCodeSent,
-    required Function(String error) onError,
-  }) async {
+  /// Send password reset code to phone
+  Future<void> sendPasswordResetPhone(String phoneNumber) async {
     try {
-      await _auth.verifyPhoneNumber(
-        phoneNumber: phoneNumber,
-        verificationCompleted: (PhoneAuthCredential credential) async {
-          // Auto-verification on Android
-        },
-        verificationFailed: (FirebaseException e) {
-          onError(_handleAuthException(e));
-        },
-        codeSent: (String verificationId, int? resendToken) {
-          onCodeSent(verificationId);
-        },
-        codeAutoRetrievalTimeout: (String verificationId) {},
+      // 1. Sanitize phone number for lookups
+      final sanitized = phoneNumber.replaceAll(RegExp(r'[^0-9]'), '');
+
+      // 2. Check if phone exists and get user details
+      final user = await _supabaseService.getUserByPhone(sanitized);
+      if (user == null) {
+        throw 'No account found with this mobile number.';
+      }
+
+      final email = user['email'] as String?;
+      final dbPhone = user['phone_number'] as String? ?? phoneNumber;
+
+      // 3. Generate and store the request in the database
+      final code = _generateOTP();
+      await _supabaseService.storePasswordResetRequest(
+        identifier: phoneNumber.trim(),
+        email: email,
+        phoneNumber: dbPhone,
+        type: 'phone',
+        code: code,
       );
-    } on FirebaseException catch (e) {
-      throw _handleAuthException(e);
+
+      // 4. Trigger mock SMS delivery
+      debugPrint('SUCCESS: mobile number saved to Supabase database.');
+      debugPrint(
+        'ACTION: Sending reset password code ($code) as SMS to: $phoneNumber',
+      );
+      debugPrint('Linked Email: $email');
+
+      // We don't call verifyPhoneNumber here because we want to use our custom OTP screen
+      // with the code stored in Supabase.
+    } catch (e) {
+      rethrow;
     }
   }
 
@@ -150,7 +180,7 @@ class AuthService {
 
       // Update password
       await user.updatePassword(newPassword);
-    } on FirebaseException catch (e) {
+    } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
     }
   }
@@ -161,7 +191,7 @@ class AuthService {
       final user = _auth.currentUser;
       if (user == null) throw 'No user logged in';
       await user.updateDisplayName(name);
-    } on FirebaseException catch (e) {
+    } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
     }
   }
@@ -175,8 +205,7 @@ class AuthService {
   }
 
   /// Handle Firebase Auth exceptions
-  String _handleAuthException(FirebaseException e) {
-    debugPrint('Auth exception code: ${e.code}, message: ${e.message}');
+  String _handleAuthException(FirebaseAuthException e) {
     switch (e.code) {
       case 'user-not-found':
         return 'No account found with this email.';
@@ -194,10 +223,14 @@ class AuthService {
         return 'Too many attempts. Please try again later.';
       case 'network-request-failed':
         return 'Network error. Please check your connection.';
-      case 'internal-error':
-        return 'Firebase configuration error. Please check your internet connection and try again.';
       default:
         return e.message ?? 'An error occurred. Please try again.';
     }
+  }
+
+  /// Generate a 6-digit OTP code for password reset
+  String _generateOTP() {
+    final random = DateTime.now().microsecondsSinceEpoch.toString();
+    return random.substring(random.length - 6);
   }
 }

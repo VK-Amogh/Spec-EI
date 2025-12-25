@@ -5,6 +5,8 @@ import 'package:supabase_flutter/supabase_flutter.dart' hide User;
 import 'core/app_theme.dart';
 import 'core/env_config.dart';
 import 'screens/login_screen.dart';
+import 'screens/reset_password_screen.dart';
+import 'screens/otp_verification_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'screens/main_screen.dart';
 
@@ -56,6 +58,7 @@ class SpecEIApp extends StatelessWidget {
       title: 'SpecEI',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
+      // Auth-aware home - automatically redirect to MainScreen when logged in
       home: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(),
         builder: (context, snapshot) {
@@ -70,6 +73,26 @@ class SpecEIApp extends StatelessWidget {
           return const LoginScreen();
         },
       ),
+      // Named routes for OTP verification and password reset flows
+      onGenerateRoute: (settings) {
+        if (settings.name == '/reset-password') {
+          final identifier = settings.arguments as String? ?? '';
+          return MaterialPageRoute(
+            builder: (context) => ResetPasswordScreen(identifier: identifier),
+          );
+        }
+        if (settings.name == '/otp-verification') {
+          final args = settings.arguments as Map<String, dynamic>;
+          return MaterialPageRoute(
+            builder: (context) => OtpVerificationScreen(
+              verificationType: args['type'],
+              verificationTarget: args['target'],
+              isPasswordReset: args['isPasswordReset'] ?? false,
+            ),
+          );
+        }
+        return null;
+      },
     );
   }
 }

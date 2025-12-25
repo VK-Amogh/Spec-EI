@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../core/app_colors.dart';
 import '../widgets/glass_panel.dart';
+import '../services/supabase_service.dart';
 
 /// OTP Verification Screen
 /// 6-digit OTP input with auto-focus, mock OTP generation, and countdown timer
@@ -39,6 +40,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
   int _resendCountdown = 60;
   Timer? _countdownTimer;
   bool _canResend = false;
+  final _supabaseService = SupabaseService();
 
   late AnimationController _successAnimController;
   late Animation<double> _successScaleAnim;
@@ -59,8 +61,24 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
   }
 
   Future<void> _initializeOtp() async {
-    // Generate mock OTP after 1 second (for demo purposes)
-    // In production, this would be sent via SMS/Email
+    if (widget.isPasswordReset) {
+      // For password reset, get the code from Supabase
+      final code = await _supabaseService.getLatestResetCode(
+        widget.verificationTarget,
+      );
+      if (code != null) {
+        setState(() {
+          _mockOtp = code;
+        });
+        if (mounted) {
+          _showOtpNotification();
+        }
+        return;
+      }
+    }
+
+    // Fallback or default for registration
+    // Generate mock OTP after 1 second
     Future.delayed(const Duration(seconds: 1), _generateAndShowMockOtp);
   }
 
