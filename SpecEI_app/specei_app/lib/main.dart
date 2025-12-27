@@ -27,6 +27,10 @@ Future<void> main() async {
           storageBucket: EnvConfig.firebaseStorageBucket,
         ),
       );
+      // Set persistence for web - keeps user logged in until explicit logout
+      if (kIsWeb) {
+        await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
+      }
     } else {
       await Firebase.initializeApp();
     }

@@ -58,6 +58,24 @@ dependencies:
   
   # Phone input
   intl_phone_number_input: ^0.7.4
+  
+  # Battery information
+  battery_plus: ^6.0.3
+  
+  # Image and file picking
+  image_picker: ^1.0.7
+  file_picker: ^8.0.0
+  
+  # Camera with live preview
+  camera: ^0.11.0
+  
+  # Audio recording and playback
+  record: ^5.1.2
+  just_audio: ^0.9.40
+  audioplayers: ^6.1.0
+  
+  # Video playback
+  video_player: ^2.8.2
 
 dev_dependencies:
   flutter_test:

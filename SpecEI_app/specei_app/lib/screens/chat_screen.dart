@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
+import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:image_picker/image_picker.dart';
 import '../core/app_colors.dart';
 import '../services/chat_service.dart';
 
 class ChatScreen extends StatefulWidget {
   final String? initialQuery;
+  final List<dynamic>? attachedFiles; // XFile list for attached files
 
-  const ChatScreen({super.key, this.initialQuery});
+  const ChatScreen({super.key, this.initialQuery, this.attachedFiles});
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -19,13 +24,85 @@ class _ChatScreenState extends State<ChatScreen> {
   final _textController = TextEditingController();
   final List<Map<String, dynamic>> _messages = [];
   bool _isLoading = false;
+  List<XFile>? _attachedImages;
 
   @override
   void initState() {
     super.initState();
-    if (widget.initialQuery != null && widget.initialQuery!.isNotEmpty) {
+
+    // Handle attached files (images for analysis)
+    if (widget.attachedFiles != null && widget.attachedFiles!.isNotEmpty) {
+      _attachedImages = widget.attachedFiles!.cast<XFile>();
+      _analyzeAttachedImages();
+    } else if (widget.initialQuery != null && widget.initialQuery!.isNotEmpty) {
       _handleSubmitted(widget.initialQuery!);
     }
+  }
+
+  /// Analyze attached images automatically when screen opens
+  Future<void> _analyzeAttachedImages() async {
+    if (_attachedImages == null || _attachedImages!.isEmpty) return;
+
+    for (final file in _attachedImages!) {
+      // Add user message showing the image was attached
+      setState(() {
+        _messages.add({
+          'role': 'user',
+          'content': '', // Empty - image only, no text label
+          'isImage': true,
+          'imagePath': file.path,
+        });
+        _isLoading = true;
+      });
+      _scrollToBottom();
+
+      try {
+        // Read image bytes
+        final Uint8List bytes;
+        if (kIsWeb) {
+          bytes = await file.readAsBytes();
+        } else {
+          bytes = await File(file.path).readAsBytes();
+        }
+
+        // Use custom prompt if text was provided, otherwise use default
+        final String? customPrompt = widget.initialQuery;
+
+        // Analyze image with vision AI
+        final analysis = await _chatService.analyzeImage(
+          bytes,
+          file.name,
+          userPrompt: customPrompt,
+        );
+
+        if (mounted) {
+          setState(() {
+            _messages.add({
+              'role': 'assistant',
+              'content': analysis,
+              'isVisionResponse': true,
+            });
+            _isLoading = false;
+          });
+          _scrollToBottom();
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            _messages.add({
+              'role': 'error',
+              'content':
+                  'Failed to analyze image: ${e.toString().replaceAll('Exception: ', '')}',
+            });
+            _isLoading = false;
+          });
+          _scrollToBottom();
+        }
+      }
+    }
+
+    // Clear the attached images after processing
+    _attachedImages = null;
   }
 
   @override
@@ -202,13 +279,15 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget _buildMessage(Map<String, dynamic> message) {
     final isUser = message['role'] == 'user';
     final isError = message['role'] == 'error';
+    final isImage = message['isImage'] == true;
+    final imagePath = message['imagePath'] as String?;
 
     if (isUser) {
       return Align(
         alignment: Alignment.centerRight,
         child: Container(
           margin: const EdgeInsets.only(bottom: 24, left: 48),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: const Color(0xFF121212),
             borderRadius: const BorderRadius.only(
@@ -219,13 +298,44 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
             border: Border.all(color: Colors.white.withOpacity(0.08)),
           ),
-          child: Text(
-            message['content'],
-            style: GoogleFonts.inter(
-              fontSize: 15,
-              color: Colors.grey.shade200,
-              height: 1.5,
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              // Show image thumbnail if this is an image message
+              if (isImage && imagePath != null) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: kIsWeb
+                      ? Image.network(
+                          imagePath,
+                          width: 150,
+                          height: 150,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              _buildImagePlaceholder(),
+                        )
+                      : Image.file(
+                          File(imagePath),
+                          width: 150,
+                          height: 150,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              _buildImagePlaceholder(),
+                        ),
+                ),
+                if (!isImage) const SizedBox(height: 8),
+              ],
+              // Only show text if there's content
+              if (message['content'].toString().isNotEmpty)
+                Text(
+                  message['content'],
+                  style: GoogleFonts.inter(
+                    fontSize: 15,
+                    color: Colors.grey.shade200,
+                    height: 1.5,
+                  ),
+                ),
+            ],
           ),
         ),
       );
@@ -325,6 +435,29 @@ class _ChatScreenState extends State<ChatScreen> {
               color: color,
               letterSpacing: 0.5,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildImagePlaceholder() {
+    return Container(
+      width: 150,
+      height: 150,
+      decoration: BoxDecoration(
+        color: Colors.grey.shade900,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.image_outlined, size: 40, color: Colors.grey.shade600),
+          const SizedBox(height: 8),
+          Text(
+            'Image',
+            style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade600),
           ),
         ],
       ),

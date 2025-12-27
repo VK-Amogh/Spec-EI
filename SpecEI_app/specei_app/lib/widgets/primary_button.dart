@@ -45,13 +45,17 @@ class _PrimaryButtonState extends State<PrimaryButton> {
           transform: Matrix4.identity()..scale(_isPressed ? 0.95 : 1.0),
           transformAlignment: Alignment.center,
           decoration: BoxDecoration(
-            color: widget.isLoading
-                ? AppColors.primary.withOpacity(0.7)
-                : AppColors.primary.withOpacity(
-                    _isPressed ? 0.8 : (_isHovered ? 0.8 : 1.0),
-                  ),
+            color: widget.onPressed == null
+                ? Colors.transparent
+                : (widget.isLoading
+                      ? AppColors.primary.withOpacity(0.7)
+                      : AppColors.primary.withOpacity(
+                          _isPressed ? 0.8 : (_isHovered ? 0.8 : 1.0),
+                        )),
             borderRadius: BorderRadius.circular(30),
-            // Removed shadows as requested
+            border: widget.onPressed == null
+                ? Border.all(color: AppColors.primary.withOpacity(0.5))
+                : null,
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -72,7 +76,9 @@ class _PrimaryButtonState extends State<PrimaryButton> {
                   style: GoogleFonts.inter(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: Colors.black,
+                    color: widget.onPressed == null
+                        ? AppColors.primary.withOpacity(0.5)
+                        : Colors.black,
                   ),
                 ),
                 if (widget.showArrow) ...[
@@ -81,10 +87,12 @@ class _PrimaryButtonState extends State<PrimaryButton> {
                     duration: const Duration(milliseconds: 200),
                     transform: Matrix4.identity()
                       ..translate(_isPressed ? 4.0 : 0.0, 0.0),
-                    child: const Icon(
+                    child: Icon(
                       Icons.arrow_forward,
                       size: 20,
-                      color: Colors.black,
+                      color: widget.onPressed == null
+                          ? AppColors.primary.withOpacity(0.5)
+                          : Colors.black,
                     ),
                   ),
                 ],

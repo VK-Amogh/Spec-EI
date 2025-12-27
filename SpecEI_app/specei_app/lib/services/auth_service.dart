@@ -98,7 +98,11 @@ class AuthService {
       // 1. Check if email exists in our database
       final exists = await _supabaseService.emailExists(email);
       if (!exists) {
-        throw 'No account found with this email address.';
+        debugPrint(
+          'Mock OTP: No account found for $email, simulating success.',
+        );
+        await Future.delayed(const Duration(seconds: 1));
+        return;
       }
 
       // 2. Generate and store the request in the database
@@ -114,9 +118,9 @@ class AuthService {
         code: code,
       );
 
-      // 3. Send the reset link via Firebase
+      // 3. Send actual Firebase password reset email
       await _auth.sendPasswordResetEmail(email: email.trim());
-      debugPrint('Generated Code for Email Reset: $code');
+      debugPrint('Password Reset: Email sent to $email via Firebase');
     } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
     }
@@ -130,8 +134,16 @@ class AuthService {
 
       // 2. Check if phone exists and get user details
       final user = await _supabaseService.getUserByPhone(sanitized);
+
+      // MOCK OTP LOGIC: If user not found, we still simulate success for security
+      // (preventing user enumeration) and to satisfy the "Mock OTP" request.
       if (user == null) {
-        throw 'No account found with this mobile number.';
+        debugPrint(
+          'Mock OTP: No account found for $phoneNumber, simulating success.',
+        );
+        // We simulate a delay to feel real
+        await Future.delayed(const Duration(seconds: 1));
+        return;
       }
 
       final email = user['email'] as String?;
@@ -157,6 +169,8 @@ class AuthService {
       // We don't call verifyPhoneNumber here because we want to use our custom OTP screen
       // with the code stored in Supabase.
     } catch (e) {
+      debugPrint('Error in sendPasswordResetPhone: $e');
+      // Always rethrow unexpected errors, but we handled user-not-found above
       rethrow;
     }
   }

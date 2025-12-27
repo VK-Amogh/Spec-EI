@@ -57,12 +57,16 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    // Check conditions
+    // Check conditions - capital letters first, then format
     String? error;
-    bool isValid = RegExp(r'^[a-z0-9._%+-]+@gmail\.com$').hasMatch(email);
 
-    if (!isValid) {
-      error = 'Please enter a valid email';
+    // Check for capital letters first
+    if (RegExp(r'[A-Z]').hasMatch(email)) {
+      error = 'Email must be in lowercase';
+    }
+    // Then check valid @gmail.com format specifically
+    else if (!RegExp(r'^[a-z0-9._%+-]+@gmail\.com$').hasMatch(email)) {
+      error = 'Please enter a valid @gmail.com address';
     }
 
     setState(() {

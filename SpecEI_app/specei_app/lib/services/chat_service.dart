@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 
 /// Groq AI Chat Service
@@ -7,10 +8,8 @@ import 'package:http/http.dart' as http;
 class ChatService {
   // Get your free API key from: https://console.groq.com/keys
   // TODO: Move to env_config.dart for security
-  static const String _apiKey = String.fromEnvironment(
-    'GROQ_API_KEY',
-    defaultValue: 'YOUR_GROQ_API_KEY',
-  );
+  // Groq API Key
+  static const String _apiKey = 'INSERT_GROQ_API_KEY_HERE';
   static const String _baseUrl =
       'https://api.groq.com/openai/v1/chat/completions';
 
@@ -96,5 +95,131 @@ class ChatService {
           'You help users with information, tasks, and provide intelligent insights. '
           'Be concise, helpful, and friendly.',
     });
+  }
+
+  /// Transcribe audio using Groq Whisper model
+  Future<String> transcribeAudio(Uint8List audioBytes, String fileName) async {
+    try {
+      final uri = Uri.parse(
+        'https://api.groq.com/openai/v1/audio/transcriptions',
+      );
+      final request = http.MultipartRequest('POST', uri);
+
+      request.headers['Authorization'] = 'Bearer $_apiKey';
+
+      request.fields['model'] = 'whisper-large-v3'; // Groq Whisper model
+      request.fields['response_format'] = 'json';
+
+      request.files.add(
+        http.MultipartFile.fromBytes('file', audioBytes, filename: fileName),
+      );
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['text'] as String;
+      } else {
+        throw Exception('Transcription failed: ${response.body}');
+      }
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Transcription error: $e');
+    }
+  }
+
+  /// Analyze an image using Groq's Llama 3.2 Vision model
+  /// Supports both file bytes and URL-based images
+  Future<String> analyzeImage(
+    Uint8List imageBytes,
+    String fileName, {
+    String? userPrompt,
+  }) async {
+    // Convert image to base64
+    final base64Image = base64Encode(imageBytes);
+
+    // Determine MIME type from filename
+    String mimeType = 'image/jpeg';
+    final extension = fileName.toLowerCase().split('.').last;
+    switch (extension) {
+      case 'png':
+        mimeType = 'image/png';
+        break;
+      case 'gif':
+        mimeType = 'image/gif';
+        break;
+      case 'webp':
+        mimeType = 'image/webp';
+        break;
+      case 'jpg':
+      case 'jpeg':
+      default:
+        mimeType = 'image/jpeg';
+    }
+
+    // Build the prompt
+    final prompt =
+        userPrompt ??
+        'Analyze this image in detail. Describe what you see including objects, people, text, colors, setting, and any notable features. Be thorough but concise.';
+
+    try {
+      final response = await http.post(
+        Uri.parse(_baseUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_apiKey',
+        },
+        body: json.encode({
+          'model':
+              'meta-llama/llama-4-scout-17b-16e-instruct', // Llama 4 Scout vision model
+          'messages': [
+            {
+              'role': 'user',
+              'content': [
+                {'type': 'text', 'text': prompt},
+                {
+                  'type': 'image_url',
+                  'image_url': {'url': 'data:$mimeType;base64,$base64Image'},
+                },
+              ],
+            },
+          ],
+          'temperature': 0.7,
+          'max_tokens': 1024,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final analysisResult =
+            data['choices'][0]['message']['content'] as String;
+
+        // Add to conversation history for context
+        _conversationHistory.add({
+          'role': 'user',
+          'content': '[Image attached: $fileName] $prompt',
+        });
+        _conversationHistory.add({
+          'role': 'assistant',
+          'content': analysisResult,
+        });
+
+        return analysisResult;
+      } else if (response.statusCode == 401) {
+        throw Exception('Invalid API key. Check your Groq API key.');
+      } else if (response.statusCode == 429) {
+        throw Exception('Rate limit exceeded. Please wait and try again.');
+      } else {
+        final error = json.decode(response.body);
+        throw Exception(
+          error['error']?['message'] ??
+              'Vision API error: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Image analysis error: $e');
+    }
   }
 }

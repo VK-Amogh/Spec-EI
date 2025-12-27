@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import '../widgets/bottom_nav_bar.dart';
+import '../widgets/audio_recording_dialog.dart';
 import '../core/app_colors.dart';
 import 'tabs/home_tab.dart';
 import 'tabs/memory_tab.dart';
 import 'tabs/camera_tab.dart';
 import 'tabs/device_settings_tab.dart';
+import 'camera_screen.dart';
 
 /// Main Screen Container with PageView and Bottom Navigation
 /// Provides swipe navigation between tabs with slide animations
@@ -44,6 +46,48 @@ class _MainScreenState extends State<MainScreen> {
     setState(() => _currentIndex = index);
   }
 
+  /// Handle Photo option - open camera screen for photo
+  void _onPhotoTap() async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (context) => const CameraScreen()),
+    );
+
+    // If photo was taken, go to Memory tab to see it
+    if (result == true) {
+      _onNavTap(1);
+    }
+  }
+
+  /// Handle Video option - open camera screen for video recording
+  void _onVideoTap() async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const CameraScreen(startInVideoMode: true),
+      ),
+    );
+
+    // If video was recorded, go to Memory tab to see it
+    if (result == true) {
+      _onNavTap(1);
+    }
+  }
+
+  /// Handle Audio option - show recording dialog
+  void _onAudioTap() async {
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AudioRecordingDialog(),
+    );
+
+    // If audio was saved, go to Memory tab to see it
+    if (result == true) {
+      _onNavTap(1);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -53,7 +97,7 @@ class _MainScreenState extends State<MainScreen> {
           // Background glow effects
           _buildBackgroundEffects(),
 
-          // Main content
+          // Main content - 4 tabs: Home, Memory, Camera, Settings
           PageView(
             controller: _pageController,
             onPageChanged: _onPageChanged,
@@ -71,7 +115,13 @@ class _MainScreenState extends State<MainScreen> {
             left: 0,
             right: 0,
             bottom: 0,
-            child: BottomNavBar(currentIndex: _currentIndex, onTap: _onNavTap),
+            child: BottomNavBar(
+              currentIndex: _currentIndex,
+              onTap: _onNavTap,
+              onPhotoTap: _onPhotoTap,
+              onVideoTap: _onVideoTap,
+              onAudioTap: _onAudioTap,
+            ),
           ),
         ],
       ),

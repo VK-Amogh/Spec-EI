@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Supabase Database Service
@@ -287,6 +288,348 @@ class SupabaseService {
           .eq('email', email.toLowerCase().trim());
     } catch (e) {
       print('Failed to clear pending verification: $e');
+    }
+  }
+
+  // ==================== REMINDERS ====================
+
+  /// Create a reminder
+  Future<Map<String, dynamic>?> createReminder({
+    required String firebaseUid,
+    required String title,
+    required DateTime reminderDateTime,
+  }) async {
+    try {
+      final response = await _client
+          .from('reminders')
+          .insert({
+            'user_id': firebaseUid,
+            'title': title,
+            'reminder_datetime': reminderDateTime.toIso8601String(),
+            'created_at': DateTime.now().toIso8601String(),
+            'is_completed': false,
+          })
+          .select()
+          .single();
+      return response;
+    } catch (e) {
+      print('Failed to create reminder: $e');
+      return null;
+    }
+  }
+
+  /// Get all reminders for a user
+  Future<List<Map<String, dynamic>>> getReminders(String firebaseUid) async {
+    try {
+      final response = await _client
+          .from('reminders')
+          .select()
+          .eq('user_id', firebaseUid)
+          .eq('is_completed', false)
+          .order('reminder_datetime', ascending: true);
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      print('Failed to get reminders: $e');
+      return [];
+    }
+  }
+
+  /// Delete a reminder
+  Future<void> deleteReminder(String reminderId) async {
+    try {
+      await _client.from('reminders').delete().eq('id', reminderId);
+    } catch (e) {
+      print('Failed to delete reminder: $e');
+    }
+  }
+
+  /// Mark reminder as completed
+  Future<void> completeReminder(String reminderId) async {
+    try {
+      await _client
+          .from('reminders')
+          .update({'is_completed': true})
+          .eq('id', reminderId);
+    } catch (e) {
+      print('Failed to complete reminder: $e');
+    }
+  }
+
+  // ==================== NOTES ====================
+
+  /// Create a note
+  Future<Map<String, dynamic>?> createNote({
+    required String firebaseUid,
+    required String title,
+    required String content,
+  }) async {
+    try {
+      final response = await _client
+          .from('notes')
+          .insert({
+            'user_id': firebaseUid,
+            'title': title,
+            'content': content,
+            'created_at': DateTime.now().toIso8601String(),
+          })
+          .select()
+          .single();
+      return response;
+    } catch (e) {
+      print('Failed to create note: $e');
+      return null;
+    }
+  }
+
+  /// Get all notes for a user
+  Future<List<Map<String, dynamic>>> getNotes(String firebaseUid) async {
+    try {
+      final response = await _client
+          .from('notes')
+          .select()
+          .eq('user_id', firebaseUid)
+          .order('created_at', ascending: false);
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      print('Failed to get notes: $e');
+      return [];
+    }
+  }
+
+  /// Delete a note
+  Future<void> deleteNote(String noteId) async {
+    try {
+      await _client.from('notes').delete().eq('id', noteId);
+    } catch (e) {
+      print('Failed to delete note: $e');
+    }
+  }
+
+  // ==================== FOCUS SESSIONS ====================
+
+  /// Create a focus session
+  Future<Map<String, dynamic>?> createFocusSession({
+    required String firebaseUid,
+    required int durationMinutes,
+    String? sessionType,
+  }) async {
+    try {
+      final response = await _client
+          .from('focus_sessions')
+          .insert({
+            'user_id': firebaseUid,
+            'duration_minutes': durationMinutes,
+            'session_type': sessionType ?? 'timed',
+            'started_at': DateTime.now().toIso8601String(),
+            'is_completed': false,
+          })
+          .select()
+          .single();
+      return response;
+    } catch (e) {
+      print('Failed to create focus session: $e');
+      return null;
+    }
+  }
+
+  /// Complete a focus session
+  Future<void> completeFocusSession(String sessionId, int actualMinutes) async {
+    try {
+      await _client
+          .from('focus_sessions')
+          .update({
+            'is_completed': true,
+            'ended_at': DateTime.now().toIso8601String(),
+            'actual_minutes': actualMinutes,
+          })
+          .eq('id', sessionId);
+    } catch (e) {
+      print('Failed to complete focus session: $e');
+    }
+  }
+
+  /// Get focus sessions for a user
+  Future<List<Map<String, dynamic>>> getFocusSessions(
+    String firebaseUid,
+  ) async {
+    try {
+      final response = await _client
+          .from('focus_sessions')
+          .select()
+          .eq('user_id', firebaseUid)
+          .order('started_at', ascending: false);
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      print('Failed to get focus sessions: $e');
+      return [];
+    }
+  }
+
+  // ==================== MEDIA ====================
+
+  /// Save media metadata
+  Future<Map<String, dynamic>?> saveMedia({
+    required String firebaseUid,
+    required String mediaType,
+    String? filePath,
+    String? fileUrl,
+    int? durationSeconds,
+  }) async {
+    try {
+      final response = await _client
+          .from('media')
+          .insert({
+            'user_id': firebaseUid,
+            'media_type': mediaType,
+            'file_path': filePath,
+            'file_url': fileUrl,
+            'duration_seconds': durationSeconds,
+            'captured_at': DateTime.now().toIso8601String(),
+            'created_at': DateTime.now().toIso8601String(),
+          })
+          .select()
+          .single();
+      return response;
+    } catch (e) {
+      print('Failed to save media: $e');
+      return null;
+    }
+  }
+
+  /// Get all media for a user
+  Future<List<Map<String, dynamic>>> getMedia(String firebaseUid) async {
+    try {
+      final response = await _client
+          .from('media')
+          .select()
+          .eq('user_id', firebaseUid)
+          .order('captured_at', ascending: false);
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      print('Failed to get media: $e');
+      return [];
+    }
+  }
+
+  /// Delete media
+  Future<void> deleteMedia(String mediaId) async {
+    try {
+      // Get file path first
+      final data = await _client
+          .from('media')
+          .select('file_path')
+          .eq('id', mediaId)
+          .single();
+      final filePath = data['file_path'] as String?;
+
+      // Delete metadata
+      await _client.from('media').delete().eq('id', mediaId);
+
+      // Delete file from storage if path exists
+      if (filePath != null) {
+        await _client.storage.from('media-files').remove([filePath]);
+      }
+    } catch (e) {
+      print('Failed to delete media: $e');
+    }
+  }
+
+  // ==================== STORAGE ====================
+
+  /// Upload file to storage bucket and get public URL
+  Future<String?> uploadMediaFile({
+    required String userId,
+    required String fileName,
+    required List<int> fileBytes,
+    required String mimeType,
+  }) async {
+    try {
+      final path = '$userId/$fileName';
+
+      // Convert to Uint8List if needed
+      final Uint8List bytes = fileBytes is Uint8List
+          ? fileBytes
+          : Uint8List.fromList(fileBytes);
+
+      print('Uploading to media-files bucket: $path (${bytes.length} bytes)');
+
+      await _client.storage
+          .from('media-files')
+          .uploadBinary(
+            path,
+            bytes,
+            fileOptions: FileOptions(contentType: mimeType, upsert: true),
+          );
+
+      // Get public URL
+      final publicUrl = _client.storage.from('media-files').getPublicUrl(path);
+      print('Upload successful! URL: $publicUrl');
+      return publicUrl;
+    } catch (e) {
+      print('Failed to upload media file: $e');
+      return null;
+    }
+  }
+
+  /// Save media with file upload
+  Future<Map<String, dynamic>?> saveMediaWithFile({
+    required String firebaseUid,
+    required String mediaType,
+    required String fileName,
+    required List<int> fileBytes,
+    required String mimeType,
+    String? transcription,
+    int? durationSeconds,
+  }) async {
+    try {
+      // Upload file first
+      final fileUrl = await uploadMediaFile(
+        userId: firebaseUid,
+        fileName: fileName,
+        fileBytes: fileBytes,
+        mimeType: mimeType,
+      );
+
+      if (fileUrl == null) {
+        throw Exception('File upload failed');
+      }
+
+      // Save metadata to database
+      final response = await _client
+          .from('media')
+          .insert({
+            'user_id': firebaseUid,
+            'media_type': mediaType,
+            'file_path': '$firebaseUid/$fileName',
+            'file_url': fileUrl,
+            'file_name': fileName,
+            'transcription': transcription,
+            'duration_seconds': durationSeconds,
+            'captured_at': DateTime.now().toIso8601String(),
+            'created_at': DateTime.now().toIso8601String(),
+          })
+          .select()
+          .single();
+
+      return response;
+    } catch (e) {
+      print('Failed to save media with file: $e');
+      return null;
+    }
+  }
+
+  /// Update media transcription
+  Future<void> updateMediaTranscription(
+    String mediaId,
+    String transcription,
+  ) async {
+    try {
+      await _client
+          .from('media')
+          .update({'transcription': transcription})
+          .eq('id', mediaId);
+    } catch (e) {
+      print('Failed to update transcription: $e');
     }
   }
 }

@@ -81,25 +81,35 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     });
 
     try {
-      // In a real app, we would use the session from OTP verification
-      // For this mock, we'll simulate success and show a snackbar
-      await Future.delayed(const Duration(seconds: 1));
+      // In a real app, we would use the session from OTP verification.
+      // For this mock, we simply simulate a network delay and success.
+      // We do NOT call Firebase here because we don't have a valid reset code (mock flow).
+      await Future.delayed(const Duration(milliseconds: 1500));
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text(
-              'Password reset successfully! Please login with your new password.',
+              'Demo: Password reset simulated! In production, your password would be updated.',
+              style: TextStyle(color: Colors.black),
             ),
-            backgroundColor: AppColors.primaryDark,
+            backgroundColor: Colors.greenAccent,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
           ),
         );
         // Pop until we are back at the root (LoginScreen)
         Navigator.of(context).popUntil((route) => route.isFirst);
       }
     } catch (e) {
+      debugPrint('Error in reset password: $e');
       if (mounted) {
-        setState(() => _errorMessage = e.toString());
+        // Fallback: even if error, since this is mock, show success to user
+        // so they don't get stuck.
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: const Text('Password reset successfully (Mock)')),
+        );
+        Navigator.of(context).popUntil((route) => route.isFirst);
       }
     } finally {
       if (mounted) {

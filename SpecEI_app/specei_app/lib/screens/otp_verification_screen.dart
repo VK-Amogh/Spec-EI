@@ -130,32 +130,62 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
         child: Material(
           color: Colors.transparent,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
             decoration: BoxDecoration(
               color: AppColors.surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: AppColors.primary.withOpacity(0.5),
+                width: 2,
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
+                  color: Colors.black.withOpacity(0.4),
+                  blurRadius: 20,
+                  offset: const Offset(0, 6),
+                ),
+                BoxShadow(
+                  color: AppColors.primary.withOpacity(0.2),
+                  blurRadius: 30,
+                  spreadRadius: 2,
                 ),
               ],
             ),
             child: Row(
               children: [
-                Icon(Icons.sms, color: AppColors.primary, size: 18),
-                const SizedBox(width: 12),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.sms, color: AppColors.primary, size: 28),
+                ),
+                const SizedBox(width: 16),
                 Expanded(
-                  child: Text(
-                    'Your OTP is: $_mockOtp',
-                    style: GoogleFonts.spaceGrotesk(
-                      color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                      letterSpacing: 2,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Your OTP Code',
+                        style: GoogleFonts.inter(
+                          color: AppColors.textMuted,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _mockOtp,
+                        style: GoogleFonts.spaceGrotesk(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 28,
+                          letterSpacing: 8,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],

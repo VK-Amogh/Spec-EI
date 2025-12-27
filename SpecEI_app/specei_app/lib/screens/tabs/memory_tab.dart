@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'dart:async';
+import 'package:image_picker/image_picker.dart';
 import '../../core/app_colors.dart';
 import '../../services/recording_service.dart';
+import '../../services/memory_data_service.dart';
+import 'package:audioplayers/audioplayers.dart';
+import '../camera_screen.dart';
+import '../video_player_screen.dart';
 
 /// Memory Tab - Timeline view with memory cards
 /// Matches design from memory_timeline_ultimate_ui
@@ -14,13 +20,132 @@ class MemoryTab extends StatefulWidget {
 
 class _MemoryTabState extends State<MemoryTab> {
   int _selectedFilter = 0;
-  final List<String> _filters = ['ALL', 'VOICE', 'VISUAL', 'SMART GROUPING'];
+  final List<String> _filters = ['SMART GROUPING', 'VOICE', 'VISUAL', 'ALL'];
+
+  // Sub-tab for ALL filter (0 = Visuals, 1 = Audio)
+  int _allSubTab = 0;
 
   // Recording state
   final RecordingService _recordingService = RecordingService();
   bool _isRecordingAudio = false;
   bool _isRecordingVideo = false;
   final List<RecordedMemory> _recordedMemories = [];
+
+  // Real-time clock
+  Timer? _clockTimer;
+  DateTime _currentTime = DateTime.now();
+
+  // Shared memory data service
+  final MemoryDataService _memoryService = MemoryDataService();
+
+  // Audio Player State
+  String? _playingUrl;
+  bool _isPlayerPlaying = false;
+  Duration _currentPosition = Duration.zero;
+  Duration _totalDuration = Duration.zero;
+  StreamSubscription? _playerStateSub;
+  StreamSubscription? _positionSub;
+  StreamSubscription? _durationSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _startClockTimer();
+    _memoryService.addListener(_onMemoryDataChanged);
+    _memoryService.loadFromDatabase(); // Load data from Supabase
+    _initAudioListeners();
+    // Request microphone permission on app start to avoid repeated dialogs
+    _requestMicrophonePermission();
+  }
+
+  /// Request microphone permission at startup for seamless recording
+  Future<void> _requestMicrophonePermission() async {
+    await _recordingService.requestMicrophonePermission();
+  }
+
+  @override
+  void dispose() {
+    _clockTimer?.cancel();
+    _memoryService.removeListener(_onMemoryDataChanged);
+    _disposeAudioListeners();
+    super.dispose();
+  }
+
+  void _onMemoryDataChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _startClockTimer() {
+    // Update every second for real-time display
+    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) {
+        setState(() => _currentTime = DateTime.now());
+      }
+    });
+  }
+
+  void _initAudioListeners() {
+    // Listen to player state
+    _playerStateSub = _recordingService.onPlayerStateChanged.listen((state) {
+      if (mounted) {
+        setState(() {
+          _isPlayerPlaying = state == PlayerState.playing;
+          if (state == PlayerState.stopped || state == PlayerState.completed) {
+            _playingUrl = null;
+            _currentPosition = Duration.zero;
+          }
+        });
+      }
+    });
+
+    // Listen to position changes
+    _positionSub = _recordingService.onPositionChanged.listen((position) {
+      if (mounted) {
+        setState(() => _currentPosition = position);
+      }
+    });
+
+    // Listen to duration changes
+    _durationSub = _recordingService.onDurationChanged.listen((duration) {
+      if (mounted) {
+        setState(() => _totalDuration = duration);
+      }
+    });
+  }
+
+  void _disposeAudioListeners() {
+    _playerStateSub?.cancel();
+    _positionSub?.cancel();
+    _durationSub?.cancel();
+  }
+
+  // Check if there's any content to display
+  bool get _hasContent {
+    return _memoryService.hasContent;
+  }
+
+  // Get filtered media items based on selected filter
+  // 0 = SMART GROUPING, 1 = VOICE (audio only), 2 = VISUAL (photo + video), 3 = ALL
+  List<MediaItem> get _filteredMediaItems {
+    final allMedia = _memoryService.mediaItems;
+
+    switch (_selectedFilter) {
+      case 0: // SMART GROUPING - show all for now
+        return allMedia;
+      case 1: // VOICE - audio only
+        return allMedia.where((m) => m.type == MediaType.audio).toList();
+      case 2: // VISUAL - photos and videos only
+        return allMedia
+            .where(
+              (m) => m.type == MediaType.photo || m.type == MediaType.video,
+            )
+            .toList();
+      case 3: // ALL
+        return allMedia;
+      default:
+        return allMedia;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,78 +169,151 @@ class _MemoryTabState extends State<MemoryTab> {
                   padding: const EdgeInsets.fromLTRB(20, 16, 20, 140),
                   child: Column(
                     children: [
-                      // Pattern detected banner
-                      _buildPatternBanner(),
-                      const SizedBox(height: 24),
+                      // Show content only if there's any
+                      if (!_hasContent) ...[
+                        // No work assigned state
+                        _buildNoWorkAssignedCard(),
+                      ] else if (_selectedFilter == 3) ...[
+                        // ALL filter - show Visuals/Audio tabs
+                        _buildAllFilterContent(),
+                      ] else ...[
+                        // Pattern detected banner
+                        _buildPatternBanner(),
+                        const SizedBox(height: 24),
 
-                      // Today section
-                      _buildTimelineSection(
-                        label: 'Today',
-                        isActive: true,
-                        children: [
-                          // Dynamically recorded memories
-                          ..._recordedMemories.map(
-                            (memory) => Padding(
-                              padding: const EdgeInsets.only(bottom: 16),
-                              child: _buildMemoryCard(
-                                icon: memory.type == MemoryType.audio
-                                    ? Icons.mic
-                                    : Icons.videocam,
-                                iconColor: memory.type == MemoryType.audio
-                                    ? AppColors.primary
-                                    : Colors.blue,
-                                relevance: memory.type == MemoryType.audio
-                                    ? 'Voice Note'
-                                    : 'Video Recording',
-                                time: memory.formattedTime,
-                                title: memory.title,
-                                description: memory.formattedDuration.isNotEmpty
-                                    ? 'Duration: ${memory.formattedDuration}'
-                                    : 'Recording saved',
+                        // Past sections (Older than yesterday)
+                        ..._buildPastSections(),
+
+                        // Yesterday section
+                        _buildTimelineSection(
+                          label: 'Yesterday',
+                          isActive: false,
+                          children: [
+                            // Yesterday's media
+                            ..._filteredMediaItems
+                                .where((m) {
+                                  final yesterday = DateTime.now().subtract(
+                                    const Duration(days: 1),
+                                  );
+                                  return m.capturedAt.year == yesterday.year &&
+                                      m.capturedAt.month == yesterday.month &&
+                                      m.capturedAt.day == yesterday.day;
+                                })
+                                .map(
+                                  (media) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 16),
+                                    child: _buildMediaMemoryCard(media),
+                                  ),
+                                ),
+                            // Show empty state if nothing from yesterday
+                            if (_filteredMediaItems.where((m) {
+                              final yesterday = DateTime.now().subtract(
+                                const Duration(days: 1),
+                              );
+                              return m.capturedAt.year == yesterday.year &&
+                                  m.capturedAt.month == yesterday.month &&
+                                  m.capturedAt.day == yesterday.day;
+                            }).isEmpty)
+                              _buildEmptyScheduleCard(
+                                'No activities yesterday',
                               ),
-                            ),
-                          ),
-                          _buildMemoryCard(
-                            icon: Icons.videocam,
-                            iconColor: AppColors.primary,
-                            relevance: 'High Relevance',
-                            time: '11:15 AM',
-                            title: 'Design Sync & Patterns',
-                            description:
-                                'Discussion with the design team about new interaction patterns. Action item: Buy oat milk and check delivery confirmation.',
-                            sentiment: 'Positive',
-                          ),
-                          const SizedBox(height: 16),
-                          _buildContextGraph(),
-                          const SizedBox(height: 16),
-                          _buildMemoryCard(
-                            icon: Icons.psychology_alt,
-                            iconColor: const Color(0xFFA855F7),
-                            relevance: 'Focus Mode',
-                            relevanceColor: const Color(0xFFA855F7),
-                            time: '09:45 AM',
-                            title: 'Deep Work Session',
-                            description:
-                                'Sustained concentration period detected. Context: Coding session.',
-                            duration: '45m',
-                            showProgressBar: true,
-                            progressColor: const Color(0xFFA855F7),
-                          ),
-                        ],
-                      ),
+                          ],
+                        ),
 
-                      const SizedBox(height: 32),
+                        const SizedBox(height: 32),
 
-                      // Yesterday section
-                      _buildTimelineSection(
-                        label: 'Yesterday',
-                        isActive: false,
-                        children: [
-                          _buildImageMemoryCard(),
-                          const SizedBox(height: 16),
-                          _buildWorkoutCard(),
-                        ],
-                      ),
+                        // Today section with schedules
+                        _buildTimelineSection(
+                          label: 'Today',
+                          isActive: true,
+                          children: [
+                            // Today's reminders from service
+                            if (_memoryService.todayReminders.isNotEmpty)
+                              ..._memoryService.todayReminders.map(
+                                (reminder) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 16),
+                                  child: _buildScheduleCard(
+                                    title: reminder.title,
+                                    time: reminder.formattedTime,
+                                    type: 'reminder',
+                                  ),
+                                ),
+                              ),
+                            // Media items from Supabase (photos/videos/audio captured today)
+                            ..._filteredMediaItems
+                                .where((m) {
+                                  final now = DateTime.now();
+                                  return m.capturedAt.year == now.year &&
+                                      m.capturedAt.month == now.month &&
+                                      m.capturedAt.day == now.day;
+                                })
+                                .map(
+                                  (media) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 16),
+                                    child: _buildMediaMemoryCard(media),
+                                  ),
+                                ),
+                            if (_memoryService.todayReminders.isEmpty &&
+                                _filteredMediaItems.where((m) {
+                                  final now = DateTime.now();
+                                  return m.capturedAt.year == now.year &&
+                                      m.capturedAt.month == now.month &&
+                                      m.capturedAt.day == now.day;
+                                }).isEmpty)
+                              _buildEmptyScheduleCard(
+                                'No activities for today',
+                              ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 32),
+
+                        // Tomorrow section
+                        _buildTimelineSection(
+                          label: 'Tomorrow',
+                          isActive: false,
+                          children: [
+                            if (_memoryService.tomorrowReminders.isNotEmpty)
+                              ..._memoryService.tomorrowReminders.map(
+                                (reminder) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 16),
+                                  child: _buildScheduleCard(
+                                    title: reminder.title,
+                                    time: reminder.formattedTime,
+                                    type: 'reminder',
+                                  ),
+                                ),
+                              )
+                            else
+                              _buildEmptyScheduleCard(
+                                'No schedules for tomorrow',
+                              ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 32),
+
+                        // Upcoming section
+                        _buildTimelineSection(
+                          label: 'Upcoming',
+                          isActive: false,
+                          children: [
+                            if (_memoryService.upcomingReminders.isNotEmpty)
+                              ..._memoryService.upcomingReminders.map(
+                                (reminder) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 16),
+                                  child: _buildScheduleCard(
+                                    title: reminder.title,
+                                    time: 'In ${reminder.daysAway} days',
+                                    type: 'reminder',
+                                  ),
+                                ),
+                              )
+                            else
+                              _buildEmptyScheduleCard('No upcoming schedules'),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -165,56 +363,6 @@ class _MemoryTabState extends State<MemoryTab> {
           ),
           Row(
             children: [
-              // Audio Record Button
-              GestureDetector(
-                onTap: _toggleAudioRecording,
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: _isRecordingAudio
-                        ? Colors.red.withOpacity(0.2)
-                        : AppColors.surface,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: _isRecordingAudio
-                          ? Colors.red
-                          : Colors.white.withOpacity(0.08),
-                    ),
-                  ),
-                  child: Icon(
-                    _isRecordingAudio ? Icons.stop : Icons.mic,
-                    size: 20,
-                    color: _isRecordingAudio ? Colors.red : AppColors.primary,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              // Video Record Button
-              GestureDetector(
-                onTap: _toggleVideoRecording,
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: _isRecordingVideo
-                        ? Colors.red.withOpacity(0.2)
-                        : AppColors.surface,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: _isRecordingVideo
-                          ? Colors.red
-                          : Colors.white.withOpacity(0.08),
-                    ),
-                  ),
-                  child: Icon(
-                    _isRecordingVideo ? Icons.stop : Icons.videocam,
-                    size: 20,
-                    color: _isRecordingVideo ? Colors.red : AppColors.primary,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
               // Search button
               Container(
                 padding: const EdgeInsets.symmetric(
@@ -257,8 +405,11 @@ class _MemoryTabState extends State<MemoryTab> {
       if (memory != null) {
         setState(() {
           _isRecordingAudio = false;
-          _recordedMemories.insert(0, memory);
+          // Note: recording is automatically synced to Supabase by recordingService
+          // We just refresh the data from the service
         });
+        // Reload data from service to get the newly saved recording
+        await _memoryService.loadFromDatabase();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -290,86 +441,240 @@ class _MemoryTabState extends State<MemoryTab> {
     }
   }
 
-  /// Toggle video recording (placeholder - opens camera preview)
+  /// Open camera options dialog
   Future<void> _toggleVideoRecording() async {
-    if (_isRecordingVideo) {
-      setState(() => _isRecordingVideo = false);
-      // Video recording stop logic would go here
-    } else {
-      // Check camera permission
-      final hasPermission = await _recordingService.requestCameraPermission();
-      if (hasPermission) {
-        setState(() => _isRecordingVideo = true);
-        // For now, just show a message - full camera implementation requires more setup
-        if (mounted) {
+    // Navigate to full-screen camera
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (context) => const CameraScreen()),
+    );
+
+    // Reload data if photo/video was captured
+    if (result == true) {
+      await _memoryService.loadFromDatabase();
+    }
+  }
+
+  Widget _buildCameraOption({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 120,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 40, color: color),
+            const SizedBox(height: 12),
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Capture a photo using the camera
+  Future<void> _capturePhoto() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? photo = await picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 85,
+      );
+
+      if (photo != null) {
+        // Read file bytes
+        final bytes = await photo.readAsBytes();
+        final fileName = 'photo_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+        // Save to Supabase
+        final media = await _memoryService.addMediaWithFile(
+          type: MediaType.photo,
+          fileName: fileName,
+          fileBytes: bytes,
+          mimeType: 'image/jpeg',
+        );
+
+        if (media != null && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text(
-                'Video recording started (camera preview coming soon)',
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.white),
+                  const SizedBox(width: 8),
+                  const Text('Photo saved to memory!'),
+                ],
               ),
               backgroundColor: AppColors.primary,
-              action: SnackBarAction(
-                label: 'STOP',
-                textColor: Colors.black,
-                onPressed: () => setState(() => _isRecordingVideo = false),
-              ),
             ),
           );
         }
-      } else {
-        if (mounted) {
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to capture photo: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Record a video using the camera
+  Future<void> _recordVideo() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? video = await picker.pickVideo(
+        source: ImageSource.camera,
+        maxDuration: const Duration(minutes: 5),
+      );
+
+      if (video != null) {
+        // Read file bytes
+        final bytes = await video.readAsBytes();
+        final fileName = 'video_${DateTime.now().millisecondsSinceEpoch}.mp4';
+
+        // Save to Supabase
+        final media = await _memoryService.addMediaWithFile(
+          type: MediaType.video,
+          fileName: fileName,
+          fileBytes: bytes,
+          mimeType: 'video/mp4',
+        );
+
+        if (media != null && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Camera permission denied'),
-              backgroundColor: Colors.red,
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.white),
+                  const SizedBox(width: 8),
+                  const Text('Video saved to memory!'),
+                ],
+              ),
+              backgroundColor: AppColors.primary,
             ),
           );
         }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to record video: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
 
   Widget _buildTimeScrubber() {
+    final hour = _currentTime.hour;
+    final minute = _currentTime.minute;
+    final second = _currentTime.second;
+    final formattedTime =
+        '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}:${second.toString().padLeft(2, '0')}';
+
+    // Generate time markers around current time (hourly)
+    final List<String> timeMarkers = [];
+    for (int i = -3; i <= 3; i++) {
+      final markerHour = (hour + i) % 24;
+      if (markerHour < 0) {
+        timeMarkers.add('${(markerHour + 24).toString().padLeft(2, '0')}:00');
+      } else {
+        timeMarkers.add('${markerHour.toString().padLeft(2, '0')}:00');
+      }
+    }
+
     return Container(
-      height: 64,
+      height: 80,
       margin: const EdgeInsets.symmetric(vertical: 8),
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Time markers
+          // Time scale with markers
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 60),
-            child: Row(
-              children: [
-                _buildTimeMarker('09:00', 0.4, 6),
-                _buildTimeMarker('', 0.4, 12),
-                _buildTimeMarker('10:00', 0.6, 6),
-                _buildTimeMarker('', 0.6, 12),
-                _buildTimeMarker('11:15', 1.0, 16, isActive: true),
-                _buildTimeMarker('', 0.6, 12),
-                _buildTimeMarker('12:00', 0.6, 6),
-                _buildTimeMarker('', 0.4, 12),
-                _buildTimeMarker('13:00', 0.4, 6),
-              ],
-            ),
-          ),
-          // Center indicator
-          Positioned(
-            bottom: 0,
-            child: Container(
-              width: 2,
-              height: 24,
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: BorderRadius.circular(1),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withOpacity(0.8),
-                    blurRadius: 15,
-                  ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 80),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  for (int i = 0; i < timeMarkers.length; i++)
+                    _buildTimeMarker(
+                      timeMarkers[i],
+                      i == 3
+                          ? 1.0
+                          : (i == 2 || i == 4)
+                          ? 0.7
+                          : 0.4,
+                      i == 3 ? 20.0 : 10.0,
+                      isActive: i == 3,
+                    ),
                 ],
               ),
+            ),
+          ),
+          // Center current time display with indicator
+          Positioned(
+            top: 0,
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withOpacity(0.4),
+                        blurRadius: 12,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    formattedTime,
+                    style: GoogleFonts.robotoMono(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ),
+                // Indicator line
+                Container(
+                  width: 2,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(1),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -555,6 +860,943 @@ class _MemoryTabState extends State<MemoryTab> {
     );
   }
 
+  /// Build ALL filter content with Visuals/Audio tabs
+  Widget _buildAllFilterContent() {
+    return Column(
+      children: [
+        // Tab selector (Visuals / Audio)
+        _buildVisualsAudioTabs(),
+        const SizedBox(height: 24),
+
+        // Content based on selected tab
+        if (_allSubTab == 0) _buildVisualsList() else _buildAudioList(),
+      ],
+    );
+  }
+
+  /// Build Visuals/Audio tab selector
+  Widget _buildVisualsAudioTabs() {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+      ),
+      child: Row(
+        children: [
+          // Visuals tab
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _allSubTab = 0),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                decoration: BoxDecoration(
+                  color: _allSubTab == 0
+                      ? AppColors.primary
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(26),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.image_outlined,
+                      size: 18,
+                      color: _allSubTab == 0
+                          ? Colors.black
+                          : AppColors.textMuted,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Visuals',
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: _allSubTab == 0
+                            ? Colors.black
+                            : AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // Audio tab
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _allSubTab = 1),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                decoration: BoxDecoration(
+                  color: _allSubTab == 1
+                      ? AppColors.primary
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(26),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.audiotrack_outlined,
+                      size: 18,
+                      color: _allSubTab == 1
+                          ? Colors.black
+                          : AppColors.textMuted,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Audio',
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: _allSubTab == 1
+                            ? Colors.black
+                            : AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Build visuals list (photos and videos) sorted by date - older first
+  Widget _buildVisualsList() {
+    final visuals =
+        _memoryService.mediaItems
+            .where(
+              (m) => m.type == MediaType.photo || m.type == MediaType.video,
+            )
+            .toList()
+          ..sort((a, b) => a.capturedAt.compareTo(b.capturedAt)); // Older first
+
+    if (visuals.isEmpty) {
+      return _buildEmptyScheduleCard('No photos or videos yet');
+    }
+
+    // Group by date
+    final Map<String, List<MediaItem>> groupedVisuals = {};
+    for (final visual in visuals) {
+      final dateKey = _formatDateKey(visual.capturedAt);
+      groupedVisuals.putIfAbsent(dateKey, () => []).add(visual);
+    }
+
+    return Column(
+      children: groupedVisuals.entries.map((entry) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Date header
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text(
+                entry.key,
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.primary,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+            // Media items for this date
+            ...entry.value.map(
+              (media) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _buildVisualCard(media),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+        );
+      }).toList(),
+    );
+  }
+
+  /// Build a visual card (photo or video)
+  Widget _buildVisualCard(MediaItem media) {
+    final isVideo = media.type == MediaType.video;
+
+    return GestureDetector(
+      onTap: () {
+        if (isVideo) {
+          _showVideoPlayer(media.fileUrl ?? '');
+        } else {
+          _showPhotoViewer(media.fileUrl ?? '');
+        }
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withOpacity(0.08)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Image/Video thumbnail
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(16),
+              ),
+              child: Stack(
+                children: [
+                  Image.network(
+                    media.fileUrl ?? '',
+                    height: 180,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      height: 180,
+                      color: Colors.grey.shade900,
+                      child: const Center(
+                        child: Icon(
+                          Icons.image_not_supported,
+                          color: Colors.grey,
+                          size: 48,
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (isVideo)
+                    Positioned.fill(
+                      child: Container(
+                        color: Colors.black26,
+                        child: const Center(
+                          child: Icon(
+                            Icons.play_circle_fill,
+                            color: Colors.white,
+                            size: 56,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            // Info
+            Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        isVideo ? Icons.videocam : Icons.photo_camera,
+                        size: 16,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        isVideo ? 'Video' : 'Photo',
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    _formatTime(media.capturedAt),
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Build audio list sorted by date - older first
+  Widget _buildAudioList() {
+    final audios =
+        _memoryService.mediaItems
+            .where((m) => m.type == MediaType.audio)
+            .toList()
+          ..sort((a, b) => a.capturedAt.compareTo(b.capturedAt)); // Older first
+
+    if (audios.isEmpty) {
+      return _buildEmptyScheduleCard('No audio recordings yet');
+    }
+
+    // Group by date
+    final Map<String, List<MediaItem>> groupedAudios = {};
+    for (final audio in audios) {
+      final dateKey = _formatDateKey(audio.capturedAt);
+      groupedAudios.putIfAbsent(dateKey, () => []).add(audio);
+    }
+
+    return Column(
+      children: groupedAudios.entries.map((entry) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Date header
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text(
+                entry.key,
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.primary,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+            // Audio items for this date
+            ...entry.value.map(
+              (audio) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _buildAudioCard(audio),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+        );
+      }).toList(),
+    );
+  }
+
+  /// Build an audio card with waveform-style player
+  Widget _buildAudioCard(MediaItem audio) {
+    // Check if this audio is playing by comparing with either fileUrl or filePath
+    final audioUrl = audio.fileUrl ?? audio.filePath;
+    final isPlaying = _playingUrl == audioUrl && _isPlayerPlaying;
+
+    return _AudioPlayerCard(
+      key: ValueKey(audio.id),
+      audio: audio,
+      isPlaying: isPlaying,
+      currentPosition: isPlaying ? _currentPosition : Duration.zero,
+      totalDuration: isPlaying && _totalDuration.inMilliseconds > 0
+          ? _totalDuration
+          : (audio.duration ?? Duration.zero),
+      onPlay: () => _playMediaItem(audio),
+    );
+  }
+
+  /// Format date key for grouping
+  String _formatDateKey(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final dateOnly = DateTime(date.year, date.month, date.day);
+    final difference = today.difference(dateOnly).inDays;
+
+    if (difference == 0) return 'Today';
+    if (difference == 1) return 'Yesterday';
+    if (difference < 7) return '${difference} days ago';
+
+    return '${date.day}/${date.month}/${date.year}';
+  }
+
+  /// Format time for display
+  String _formatTime(DateTime date) {
+    final hour = date.hour;
+    final minute = date.minute.toString().padLeft(2, '0');
+    final period = hour >= 12 ? 'PM' : 'AM';
+    final hour12 = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
+    return '$hour12:$minute $period';
+  }
+
+  /// Format duration for display
+  String _formatDuration(Duration duration) {
+    final minutes = duration.inMinutes;
+    final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
+  }
+
+  // No work assigned card
+  Widget _buildNoWorkAssignedCard() {
+    return Container(
+      padding: const EdgeInsets.all(40),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.calendar_today_outlined,
+              size: 48,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'No work assigned yet',
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Set a reminder, take notes, or capture media\nto see your schedule here',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              color: AppColors.textMuted,
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Schedule card for displaying scheduled items
+  Widget _buildScheduleCard({
+    required String title,
+    required String time,
+    required String type,
+  }) {
+    IconData icon;
+    Color iconColor;
+
+    switch (type) {
+      case 'meeting':
+        icon = Icons.groups;
+        iconColor = Colors.blue;
+        break;
+      case 'call':
+        icon = Icons.phone;
+        iconColor = Colors.green;
+        break;
+      case 'deadline':
+        icon = Icons.flag;
+        iconColor = Colors.red;
+        break;
+      case 'review':
+        icon = Icons.rate_review;
+        iconColor = Colors.purple;
+        break;
+      case 'reminder':
+        icon = Icons.alarm;
+        iconColor = AppColors.primary;
+        break;
+      case 'note':
+        icon = Icons.note_alt;
+        iconColor = Colors.amber;
+        break;
+      default:
+        icon = Icons.event;
+        iconColor = AppColors.primary;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: iconColor.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, size: 22, color: iconColor),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.inter(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  time,
+                  style: GoogleFonts.robotoMono(
+                    fontSize: 12,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(Icons.chevron_right, color: AppColors.textDimmed),
+        ],
+      ),
+    );
+  }
+
+  // Empty state for schedule sections
+  Widget _buildEmptyScheduleCard(String message) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppColors.surface.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.check_circle_outline,
+            size: 20,
+            color: AppColors.textDimmed,
+          ),
+          const SizedBox(width: 12),
+          Text(
+            message,
+            style: GoogleFonts.inter(fontSize: 14, color: AppColors.textMuted),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Build a memory card for media items (photos/videos)
+  Widget _buildMediaMemoryCard(MediaItem media) {
+    final isPhoto = media.type == MediaType.photo;
+    final isVideo = media.type == MediaType.video;
+    final isAudio = media.type == MediaType.audio;
+
+    // Check if this item is currently playing
+    final isPlaying =
+        isAudio && _playingUrl == (media.fileUrl ?? media.filePath);
+
+    if (isPlaying) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.primary.withOpacity(0.5)),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.mic, size: 20, color: AppColors.primary),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: AudioWaveformPlayer(
+                    isPlaying: true,
+                    currentPosition: _currentPosition,
+                    totalDuration: _totalDuration,
+                    color: AppColors.primary,
+                    height: 30,
+                    barCount: 20,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: () => _recordingService.stopAudio(),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.stop, size: 20, color: AppColors.primary),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
+    IconData icon = Icons.photo;
+    Color iconColor = Colors.purple;
+    String typeLabel = 'Photo';
+
+    if (isVideo) {
+      icon = Icons.videocam;
+      iconColor = Colors.blue;
+      typeLabel = 'Video';
+    } else if (isAudio) {
+      icon = Icons.mic;
+      iconColor = Colors.red;
+      typeLabel = 'Audio Recording';
+    }
+
+    final timeStr =
+        '${media.capturedAt.hour.toString().padLeft(2, '0')}:${media.capturedAt.minute.toString().padLeft(2, '0')}';
+
+    return GestureDetector(
+      onTap: () => _playMediaItem(media),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withOpacity(0.08)),
+        ),
+        child: Row(
+          children: [
+            // Thumbnail or icon
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: iconColor.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: isPhoto && media.fileUrl != null
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.network(
+                        media.fileUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) =>
+                            Icon(icon, size: 28, color: iconColor),
+                      ),
+                    )
+                  : Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Icon(icon, size: 28, color: iconColor),
+                        if (isVideo)
+                          Positioned(
+                            bottom: 4,
+                            right: 4,
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.7),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Icon(
+                                Icons.play_arrow,
+                                size: 12,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        typeLabel.toUpperCase(),
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: iconColor,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '• $timeStr',
+                        style: GoogleFonts.robotoMono(
+                          fontSize: 10,
+                          color: AppColors.textDimmed,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    isPhoto
+                        ? 'Photo captured'
+                        : isVideo
+                        ? 'Video recorded'
+                        : 'Voice Note',
+                    style: GoogleFonts.inter(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  if (media.duration != null)
+                    Text(
+                      'Duration: ${media.duration!.inMinutes}m ${media.duration!.inSeconds % 60}s',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  if (media.transcription != null &&
+                      media.transcription!.isNotEmpty)
+                    Text(
+                      media.transcription!,
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                        fontStyle: FontStyle.italic,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                ],
+              ),
+            ),
+            // More options
+            PopupMenuButton<String>(
+              icon: Icon(
+                Icons.more_vert,
+                color: AppColors.textDimmed,
+                size: 20,
+              ),
+              color: AppColors.surface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              onSelected: (value) {
+                if (value == 'delete') {
+                  _deleteMediaItem(media.id);
+                }
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete, size: 16, color: Colors.red),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Delete',
+                        style: GoogleFonts.inter(color: Colors.red),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _playRecording(RecordedMemory memory) {
+    if (memory.type == MemoryType.audio) {
+      setState(() => _playingUrl = memory.filePath);
+      _recordingService.playAudio(memory.filePath);
+    }
+  }
+
+  void _playMediaItem(MediaItem media) {
+    if (media.type == MediaType.audio) {
+      // Prefer fileUrl (Supabase storage URL) over local filePath
+      final url = media.fileUrl ?? media.filePath;
+      if (url != null && url.isNotEmpty) {
+        setState(() => _playingUrl = url);
+        _recordingService.playAudio(url);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Audio file not available'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } else if (media.type == MediaType.photo && media.fileUrl != null) {
+      // Show photo in fullscreen dialog
+      _showPhotoViewer(media.fileUrl!);
+    } else if (media.type == MediaType.video && media.fileUrl != null) {
+      // Show video player dialog
+      _showVideoPlayer(media.fileUrl!);
+    }
+  }
+
+  void _showPhotoViewer(String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(16),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Photo
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Image.network(
+                imageUrl,
+                fit: BoxFit.contain,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return Container(
+                    width: 200,
+                    height: 200,
+                    color: AppColors.surface,
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        value: loadingProgress.expectedTotalBytes != null
+                            ? loadingProgress.cumulativeBytesLoaded /
+                                  loadingProgress.expectedTotalBytes!
+                            : null,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  );
+                },
+                errorBuilder: (context, error, stackTrace) => Container(
+                  width: 200,
+                  height: 200,
+                  color: AppColors.surface,
+                  child: const Center(
+                    child: Icon(Icons.error, color: Colors.red, size: 48),
+                  ),
+                ),
+              ),
+            ),
+            // Close button
+            Positioned(
+              top: 8,
+              right: 8,
+              child: GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.7),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.close, color: Colors.white, size: 24),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showVideoPlayer(String videoUrl) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            VideoPlayerScreen(videoUrl: videoUrl, title: 'Video recorded'),
+      ),
+    );
+  }
+
+  void _deleteRecordedMemory(int index) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: Text(
+          'Delete Recording?',
+          style: GoogleFonts.inter(color: AppColors.textPrimary),
+        ),
+        content: Text(
+          'This recording will be permanently deleted.',
+          style: GoogleFonts.inter(color: AppColors.textMuted),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: TextStyle(color: AppColors.textMuted)),
+          ),
+          TextButton(
+            onPressed: () {
+              setState(() {
+                _recordedMemories.removeAt(index);
+              });
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Recording deleted'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _deleteMediaItem(String id) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: Text(
+          'Delete Media?',
+          style: GoogleFonts.inter(color: AppColors.textPrimary),
+        ),
+        content: Text(
+          'This media will be permanently deleted from your memory.',
+          style: GoogleFonts.inter(color: AppColors.textMuted),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: TextStyle(color: AppColors.textMuted)),
+          ),
+          TextButton(
+            onPressed: () async {
+              await _memoryService.removeMedia(id);
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Media deleted'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildTimelineSection({
     required String label,
     required bool isActive,
@@ -632,6 +1874,7 @@ class _MemoryTabState extends State<MemoryTab> {
     String? duration,
     bool showProgressBar = false,
     Color? progressColor,
+    VoidCallback? onDelete,
   }) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -726,7 +1969,33 @@ class _MemoryTabState extends State<MemoryTab> {
                   ),
                 )
               else
-                Icon(Icons.more_horiz, color: AppColors.textMuted),
+                PopupMenuButton<String>(
+                  icon: Icon(Icons.more_horiz, color: AppColors.textMuted),
+                  color: AppColors.surface,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  onSelected: (value) {
+                    if (value == 'delete' && onDelete != null) {
+                      onDelete();
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete, size: 16, color: Colors.red),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Delete',
+                            style: GoogleFonts.inter(color: Colors.red),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
             ],
           ),
 
@@ -1243,6 +2512,108 @@ class _MemoryTabState extends State<MemoryTab> {
       child: const Icon(Icons.smart_toy, size: 28, color: Colors.black),
     );
   }
+
+  List<Widget> _buildPastSections() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+
+    // Gather all items older than yesterday
+    final pastNotes = _memoryService.notes.where((n) {
+      final date = DateTime(
+        n.createdAt.year,
+        n.createdAt.month,
+        n.createdAt.day,
+      );
+      return date.isBefore(yesterday);
+    }).toList();
+
+    final pastMedia = _filteredMediaItems.where((m) {
+      final date = DateTime(
+        m.capturedAt.year,
+        m.capturedAt.month,
+        m.capturedAt.day,
+      );
+      return date.isBefore(yesterday);
+    }).toList();
+
+    // Group by date
+    final Map<DateTime, List<dynamic>> groupedItems = {};
+
+    for (var note in pastNotes) {
+      final date = DateTime(
+        note.createdAt.year,
+        note.createdAt.month,
+        note.createdAt.day,
+      );
+      if (!groupedItems.containsKey(date)) groupedItems[date] = [];
+      groupedItems[date]!.add(note);
+    }
+
+    for (var media in pastMedia) {
+      final date = DateTime(
+        media.capturedAt.year,
+        media.capturedAt.month,
+        media.capturedAt.day,
+      );
+      if (!groupedItems.containsKey(date)) groupedItems[date] = [];
+      groupedItems[date]!.add(media);
+    }
+
+    // Sort dates ascending (Oldest -> Newest)
+    final sortedDates = groupedItems.keys.toList()..sort();
+
+    return sortedDates.map((date) {
+      final items = groupedItems[date]!;
+      // Sort items within date? Default order from service works.
+
+      return Column(
+        children: [
+          _buildTimelineSection(
+            label: _formatFullDate(date).toUpperCase(),
+            isActive: false,
+            children: items.map((item) {
+              if (item is NoteItem) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: _buildScheduleCard(
+                    title: item.title,
+                    time: item.formattedTime,
+                    type: 'note',
+                  ),
+                );
+              } else if (item is MediaItem) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: _buildMediaMemoryCard(item),
+                );
+              }
+              return const SizedBox.shrink();
+            }).toList(),
+          ),
+          const SizedBox(height: 32),
+        ],
+      );
+    }).toList();
+  }
+
+  String _formatFullDate(DateTime date) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${months[date.month - 1]} ${date.day}, ${date.year}';
+  }
 }
 
 class _GraphPainter extends CustomPainter {
@@ -1277,4 +2648,299 @@ class _GraphPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// A widget that displays an animated audio waveform
+class AudioWaveformPlayer extends StatelessWidget {
+  final bool isPlaying;
+  final Duration currentPosition;
+  final Duration totalDuration;
+  final Color color;
+  final double height;
+  final int barCount;
+
+  const AudioWaveformPlayer({
+    super.key,
+    required this.isPlaying,
+    required this.currentPosition,
+    required this.totalDuration,
+    required this.color,
+    this.height = 40,
+    this.barCount = 30,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          height: height,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: List.generate(barCount, (index) {
+              // Calculate progress
+              final double progress = totalDuration.inMilliseconds > 0
+                  ? currentPosition.inMilliseconds /
+                        totalDuration.inMilliseconds
+                  : 0.0;
+
+              // Determine if this bar is "active" based on progress
+              final bool isActive = index / barCount <= progress;
+
+              // Generate a pseudo-random height for the visual waveform effect
+              // We use index to make it static per bar, but varied across bars
+              final double randomHeightRatio =
+                  0.3 + (0.7 * ((index * 7) % 5) / 5);
+
+              return _buildBar(
+                context,
+                isActive,
+                height * randomHeightRatio,
+                index,
+              );
+            }),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              _formatDuration(currentPosition),
+              style: GoogleFonts.robotoMono(
+                fontSize: 10,
+                color: color,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            Text(
+              _formatDuration(totalDuration),
+              style: GoogleFonts.robotoMono(
+                fontSize: 10,
+                color: AppColors.textDimmed,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBar(
+    BuildContext context,
+    bool isActive,
+    double barHeight,
+    int index,
+  ) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      width: 4,
+      height: isActive && isPlaying
+          ? barHeight +
+                (index % 2 == 0 ? 4 : -2) // Animate slightly if active
+          : barHeight,
+      decoration: BoxDecoration(
+        color: isActive ? color : color.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(2),
+      ),
+    );
+  }
+
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final minutes = twoDigits(duration.inMinutes.remainder(60));
+    final seconds = twoDigits(duration.inSeconds.remainder(60));
+    return '$minutes:$seconds';
+  }
+}
+
+/// A stateless audio card that gets state from parent
+class _AudioPlayerCard extends StatelessWidget {
+  final MediaItem audio;
+  final bool isPlaying;
+  final Duration currentPosition;
+  final Duration totalDuration;
+  final VoidCallback onPlay;
+
+  const _AudioPlayerCard({
+    super.key,
+    required this.audio,
+    required this.isPlaying,
+    required this.currentPosition,
+    required this.totalDuration,
+    required this.onPlay,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Use passed total duration if valid, otherwise metadata duration
+    final durationMs = totalDuration.inMilliseconds > 0
+        ? totalDuration.inMilliseconds
+        : (audio.duration?.inMilliseconds ?? 0);
+
+    final progress = durationMs > 0
+        ? currentPosition.inMilliseconds / durationMs
+        : 0.0;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              // Play/Pause button
+              GestureDetector(
+                onTap: onPlay,
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  alignment: Alignment.center,
+                  decoration: const BoxDecoration(
+                    color: Colors.transparent,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    isPlaying ? Icons.pause : Icons.play_arrow,
+                    color: AppColors.primary,
+                    size: 32,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              // Waveform visualization
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Waveform bars
+                    SizedBox(
+                      height: 32,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: List.generate(30, (index) {
+                          // Generate pseudo-random heights for waveform
+                          final heights = [
+                            0.3,
+                            0.5,
+                            0.7,
+                            0.4,
+                            0.9,
+                            0.6,
+                            0.8,
+                            0.4,
+                            0.7,
+                            0.5,
+                            0.6,
+                            0.8,
+                            0.5,
+                            0.7,
+                            0.9,
+                            0.4,
+                            0.6,
+                            0.8,
+                            0.5,
+                            0.7,
+                            0.4,
+                            0.6,
+                            0.8,
+                            0.5,
+                            0.7,
+                            0.9,
+                            0.6,
+                            0.4,
+                            0.7,
+                            0.5,
+                          ];
+                          final barProgress = index / 30;
+                          final isActive = isPlaying && barProgress <= progress;
+
+                          return Container(
+                            width: 3,
+                            height: 32 * heights[index],
+                            decoration: BoxDecoration(
+                              color: isActive
+                                  ? AppColors.primary
+                                  : Colors.grey.shade600,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          );
+                        }),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Time and duration info
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                _formatTime(audio.capturedAt),
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  color: AppColors.textMuted,
+                ),
+              ),
+              Row(
+                children: [
+                  if (isPlaying) ...[
+                    Text(
+                      _formatDuration(currentPosition),
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    Text(
+                      ' / ',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                  Icon(Icons.access_time, size: 14, color: AppColors.textMuted),
+                  const SizedBox(width: 4),
+                  Text(
+                    audio.duration != null
+                        ? _formatDuration(audio.duration!)
+                        : 'Audio',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatTime(DateTime date) {
+    final hour = date.hour;
+    final minute = date.minute.toString().padLeft(2, '0');
+    final period = hour >= 12 ? 'PM' : 'AM';
+    final hour12 = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
+    return '$hour12:$minute $period';
+  }
+
+  String _formatDuration(Duration duration) {
+    final minutes = duration.inMinutes;
+    final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
+  }
 }

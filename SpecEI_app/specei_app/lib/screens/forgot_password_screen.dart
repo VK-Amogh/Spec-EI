@@ -5,6 +5,7 @@ import '../widgets/custom_text_field.dart';
 import '../widgets/primary_button.dart';
 import '../widgets/glass_panel.dart';
 import '../services/auth_service.dart';
+import 'otp_verification_screen.dart';
 import 'package:intl_phone_number_input/intl_phone_number_input.dart';
 
 /// Forgot Password Screen - SpecEI
@@ -30,6 +31,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   bool _isPhoneValid = false;
   bool _isEmailValid = false;
+  String? _emailError;
 
   final Map<String, int> _countryConfigs = {
     'IN': 10,
@@ -72,10 +74,30 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   void _onEmailChanged() {
+    final email = _emailController.text.trim();
     setState(() {
-      _isEmailValid = RegExp(
-        r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-      ).hasMatch(_emailController.text.trim());
+      // Check for capital letters first
+      if (RegExp(r'[A-Z]').hasMatch(email)) {
+        _emailError = 'Email must be in lowercase';
+        _isEmailValid = false;
+      }
+      // Check for valid @gmail.com format specifically
+      else if (email.isNotEmpty &&
+          !RegExp(r'^[a-z0-9._%+-]+@gmail\.com$').hasMatch(email)) {
+        _emailError = 'Please enter a valid @gmail.com address';
+        _isEmailValid = false;
+      }
+      // Valid gmail address
+      else if (email.isNotEmpty &&
+          RegExp(r'^[a-z0-9._%+-]+@gmail\.com$').hasMatch(email)) {
+        _emailError = null;
+        _isEmailValid = true;
+      }
+      // Empty field
+      else {
+        _emailError = null;
+        _isEmailValid = false;
+      }
     });
   }
 
@@ -105,16 +127,38 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       }
 
       if (mounted) {
-        Navigator.pushNamed(
+        // Navigate with slide effect
+        Navigator.push(
           context,
-          '/otp-verification',
-          arguments: {
-            'type': _usePhone ? 'phone' : 'email',
-            'target': _usePhone
-                ? '${_dialCodes[_phoneNumber.isoCode] ?? "+91"}${_phoneController.text.replaceAll(RegExp(r'[^0-9]'), '')}'
-                : _emailController.text.trim(),
-            'isPasswordReset': true,
-          },
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                OtpVerificationScreen(
+                  verificationType: _usePhone ? 'phone' : 'email',
+                  verificationTarget: _usePhone
+                      ? '${_dialCodes[_phoneNumber.isoCode] ?? "+91"}${_phoneController.text.replaceAll(RegExp(r'[^0-9]'), '')}'
+                      : _emailController.text.trim(),
+                  isPasswordReset: true,
+                ),
+            transitionsBuilder: (_, animation, __, child) {
+              return FadeTransition(
+                opacity: animation,
+                child: SlideTransition(
+                  position:
+                      Tween<Offset>(
+                        begin: const Offset(0.3, 0.0),
+                        end: Offset.zero,
+                      ).animate(
+                        CurvedAnimation(
+                          parent: animation,
+                          curve: Curves.easeOutCubic,
+                        ),
+                      ),
+                  child: child,
+                ),
+              );
+            },
+            transitionDuration: const Duration(milliseconds: 250),
+          ),
         );
       }
     } catch (e) {
@@ -172,6 +216,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                             GlassPanel(
                               padding: const EdgeInsets.all(32),
                               showTopGradient: true,
+                              enableGlow: false,
                               child: _emailSent
                                   ? _buildSuccessContent()
                                   : _buildFormContent(),
@@ -407,6 +452,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   prefixIcon: Icons.email_outlined,
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
+                  errorText: _emailError,
                   onChanged: (_) => _onEmailChanged(),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
@@ -458,7 +504,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           // Send Reset Link button
           PrimaryButton(
             text: 'Send Reset Link',
-            onPressed: (_usePhone ? _isPhoneValid : _isEmailValid)
+            onPressed:
+                (_usePhone
+                    ? _isPhoneValid
+                    : (_isEmailValid && _emailError == null))
                 ? _handleSendResetLink
                 : null,
             isLoading: _isLoading,
