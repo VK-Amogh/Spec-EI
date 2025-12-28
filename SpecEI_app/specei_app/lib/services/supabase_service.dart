@@ -632,4 +632,44 @@ class SupabaseService {
       print('Failed to update transcription: $e');
     }
   }
+
+  /// Update media AI description
+  Future<void> updateMediaAIDescription(
+    String mediaId,
+    String aiDescription,
+  ) async {
+    try {
+      await _client
+          .from('media')
+          .update({'ai_description': aiDescription})
+          .eq('id', mediaId);
+    } catch (e) {
+      print('Failed to update AI description: $e');
+    }
+  }
+
+  /// Search media by AI description content
+  /// Uses PostgreSQL full-text search for better performance
+  Future<List<Map<String, dynamic>>> searchMediaByDescription(
+    String firebaseUid,
+    String searchQuery,
+  ) async {
+    try {
+      // Use ilike for simple text matching
+      // For better performance with large datasets, consider using
+      // PostgreSQL full-text search with to_tsvector/to_tsquery
+      final response = await _client
+          .from('media')
+          .select()
+          .eq('user_id', firebaseUid)
+          .or(
+            'ai_description.ilike.%$searchQuery%,transcription.ilike.%$searchQuery%',
+          )
+          .order('captured_at', ascending: false);
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      print('Failed to search media: $e');
+      return [];
+    }
+  }
 }

@@ -1,9 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:battery_plus/battery_plus.dart';
+import 'package:provider/provider.dart';
+import 'dart:async';
 import '../../core/app_colors.dart';
+import '../../core/app_translations.dart';
 import '../../services/supabase_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/permission_state_service.dart';
+import '../../services/locale_service.dart';
 import '../login_screen.dart';
+import '../edit_profile_screen.dart';
+import '../change_password_settings_screen.dart';
+import '../language_selection_screen.dart';
+import '../appearance_screen.dart';
 
 /// Device & Settings Tab - Combined device status and settings
 /// Includes system health, controls, and app settings with logout
@@ -18,10 +28,18 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
     with SingleTickerProviderStateMixin {
   final _authService = AuthService();
   final _supabaseService = SupabaseService();
+  final _permissionService = PermissionStateService();
   late AnimationController _pulseController;
   bool _recordingMode = true;
   bool _isLoggingOut = false;
   int _selectedSection = 0; // 0 = Device, 1 = Settings
+
+  // Battery state
+  final Battery _battery = Battery();
+  int _batteryLevel = 0;
+  BatteryState _batteryState = BatteryState.unknown;
+  StreamSubscription<BatteryState>? _batteryStateSubscription;
+  Timer? _batteryTimer;
 
   @override
   void initState() {
@@ -30,12 +48,52 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
+    _initBattery();
   }
 
   @override
   void dispose() {
     _pulseController.dispose();
+    _batteryStateSubscription?.cancel();
+    _batteryTimer?.cancel();
     super.dispose();
+  }
+
+  /// Initialize battery monitoring
+  Future<void> _initBattery() async {
+    try {
+      final level = await _battery.batteryLevel;
+      if (mounted) setState(() => _batteryLevel = level);
+    } catch (e) {
+      debugPrint('Battery level error: $e');
+    }
+
+    try {
+      _batteryStateSubscription = _battery.onBatteryStateChanged.listen((
+        state,
+      ) {
+        if (mounted) {
+          setState(() => _batteryState = state);
+          _updateBatteryLevel();
+        }
+      }, onError: (e) => debugPrint('Battery state error: $e'));
+    } catch (e) {
+      debugPrint('Battery subscription error: $e');
+    }
+
+    // Update every 10 seconds for more responsive updates
+    _batteryTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      _updateBatteryLevel();
+    });
+  }
+
+  Future<void> _updateBatteryLevel() async {
+    try {
+      final level = await _battery.batteryLevel;
+      if (mounted) setState(() => _batteryLevel = level);
+    } catch (e) {
+      debugPrint('Battery update error: $e');
+    }
   }
 
   Future<void> _handleLogout() async {
@@ -82,13 +140,17 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
   }
 
   Widget _buildHeader() {
+    final localeService = Provider.of<LocaleService>(context);
+    final lang = localeService.locale.languageCode;
+    String tr(String key) => AppTranslations.translate(key, lang);
+
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
         children: [
           // Title
           Text(
-            'Device & Settings',
+            tr('device_settings'),
             style: GoogleFonts.inter(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -107,8 +169,8 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
             ),
             child: Row(
               children: [
-                _buildTabButton('Device', 0, Icons.smart_toy),
-                _buildTabButton('Settings', 1, Icons.settings),
+                _buildTabButton(tr('device'), 0, Icons.smart_toy),
+                _buildTabButton(tr('settings'), 1, Icons.settings),
               ],
             ),
           ),
@@ -270,13 +332,17 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
             child: Row(
               children: [
                 Icon(
-                  Icons.battery_charging_full,
+                  _batteryState == BatteryState.charging
+                      ? Icons.battery_charging_full
+                      : (_batteryLevel <= 20
+                            ? Icons.battery_alert
+                            : Icons.battery_std),
                   size: 16,
-                  color: AppColors.primary,
+                  color: _batteryLevel <= 20 ? Colors.red : AppColors.primary,
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  '82%',
+                  '$_batteryLevel%',
                   style: GoogleFonts.inter(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
@@ -494,13 +560,127 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
       ),
       child: Column(
         children: [
-          _buildSensorRow(Icons.mic_off, 'Microphone', 'Off', false),
+          _buildInteractiveSensorRow(
+            icon: _permissionService.isMicrophoneEnabled
+                ? Icons.mic
+                : Icons.mic_off,
+            label: 'Microphone',
+            status: _permissionService.isMicrophoneEnabled ? 'Active' : 'Off',
+            isActive: _permissionService.isMicrophoneEnabled,
+            onToggle: _toggleMicrophone,
+          ),
           const SizedBox(height: 12),
-          _buildSensorRow(Icons.videocam_off, 'Camera', 'Off', false),
+          _buildInteractiveSensorRow(
+            icon: _permissionService.isCameraEnabled
+                ? Icons.videocam
+                : Icons.videocam_off,
+            label: 'Camera',
+            status: _permissionService.isCameraEnabled ? 'Active' : 'Off',
+            isActive: _permissionService.isCameraEnabled,
+            onToggle: _toggleCamera,
+          ),
           const SizedBox(height: 12),
-          _buildSensorRow(Icons.cloud_sync, 'Cloud Sync', 'Active', true),
+          _buildInteractiveSensorRow(
+            icon: Icons.cloud_sync,
+            label: 'Cloud Sync',
+            status: _permissionService.isCloudSyncEnabled ? 'Active' : 'Off',
+            isActive: _permissionService.isCloudSyncEnabled,
+            onToggle: () {
+              _permissionService.toggleCloudSync();
+              setState(() {});
+            },
+          ),
         ],
       ),
+    );
+  }
+
+  /// Toggle microphone permission
+  void _toggleMicrophone() {
+    _permissionService.toggleMicrophone();
+    setState(() {});
+  }
+
+  /// Toggle camera permission
+  void _toggleCamera() {
+    _permissionService.toggleCamera();
+    setState(() {});
+  }
+
+  Widget _buildInteractiveSensorRow({
+    required IconData icon,
+    required String label,
+    required String status,
+    required bool isActive,
+    required VoidCallback onToggle,
+  }) {
+    return Row(
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: isActive
+                ? AppColors.primary.withOpacity(0.1)
+                : AppColors.inputBackground,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(
+            icon,
+            size: 18,
+            color: isActive ? AppColors.primary : AppColors.textMuted,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              Text(
+                status,
+                style: GoogleFonts.inter(
+                  fontSize: 10,
+                  color: isActive ? AppColors.primary : AppColors.textMuted,
+                ),
+              ),
+            ],
+          ),
+        ),
+        GestureDetector(
+          onTap: onToggle,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: 44,
+            height: 24,
+            decoration: BoxDecoration(
+              color: isActive ? AppColors.primary : AppColors.inputBackground,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: AnimatedAlign(
+              duration: const Duration(milliseconds: 200),
+              alignment: isActive
+                  ? Alignment.centerRight
+                  : Alignment.centerLeft,
+              child: Container(
+                margin: const EdgeInsets.all(3),
+                width: 18,
+                height: 18,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -576,6 +756,10 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
   // ==================== SETTINGS CONTENT ====================
 
   Widget _buildSettingsContent() {
+    final localeService = Provider.of<LocaleService>(context);
+    final lang = localeService.locale.languageCode;
+    String tr(String key) => AppTranslations.translate(key, lang);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -584,24 +768,64 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
         const SizedBox(height: 24),
 
         // Settings groups
-        _buildSettingsGroup('Account', [
-          _SettingItem(Icons.person_outline, 'Edit Profile'),
-          _SettingItem(Icons.lock_outline, 'Change Password'),
-          _SettingItem(Icons.security, 'Two-Factor Auth'),
+        _buildSettingsGroup(tr('account'), [
+          _SettingItem(
+            Icons.person_outline,
+            tr('edit_profile'),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+              );
+            },
+          ),
+          _SettingItem(
+            Icons.lock_outline,
+            tr('change_password'),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const ChangePasswordSettingsScreen(),
+                ),
+              );
+            },
+          ),
+          _SettingItem(Icons.security, tr('two_factor_auth')),
         ]),
         const SizedBox(height: 16),
 
-        _buildSettingsGroup('Preferences', [
-          _SettingItem(Icons.notifications_outlined, 'Notifications'),
-          _SettingItem(Icons.language, 'Language'),
-          _SettingItem(Icons.dark_mode_outlined, 'Appearance'),
+        _buildSettingsGroup(tr('preferences'), [
+          _SettingItem(Icons.notifications_outlined, tr('notifications')),
+          _SettingItem(
+            Icons.language,
+            tr('language'),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const LanguageSelectionScreen(),
+                ),
+              );
+            },
+          ),
+          _SettingItem(
+            Icons.dark_mode_outlined,
+            tr('appearance'),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AppearanceScreen()),
+              );
+            },
+          ),
         ]),
         const SizedBox(height: 16),
 
-        _buildSettingsGroup('Support', [
-          _SettingItem(Icons.help_outline, 'Help Center'),
-          _SettingItem(Icons.feedback_outlined, 'Feedback'),
-          _SettingItem(Icons.info_outline, 'About'),
+        _buildSettingsGroup(tr('support'), [
+          _SettingItem(Icons.help_outline, tr('help_center')),
+          _SettingItem(Icons.feedback_outlined, tr('feedback')),
+          _SettingItem(Icons.info_outline, tr('about')),
         ]),
         const SizedBox(height: 24),
 
@@ -610,7 +834,7 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
         const SizedBox(height: 16),
         Center(
           child: Text(
-            'Version 1.0.0',
+            '${tr('version')} 1.0.0',
             style: GoogleFonts.inter(fontSize: 12, color: AppColors.textMuted),
           ),
         ),
@@ -630,62 +854,70 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
         final email = profile?['email'] ?? user.email ?? 'user@example.com';
         final isLoading = snapshot.connectionState == ConnectionState.waiting;
 
-        return Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white.withOpacity(0.08)),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: const LinearGradient(
-                    colors: [AppColors.primary, AppColors.primaryDark],
+        return GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white.withOpacity(0.08)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const LinearGradient(
+                      colors: [AppColors.primary, AppColors.primaryDark],
+                    ),
+                  ),
+                  child: isLoading
+                      ? const Center(
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.black,
+                            ),
+                          ),
+                        )
+                      : const Icon(Icons.person, size: 28, color: Colors.black),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      Text(
+                        email,
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                child: isLoading
-                    ? const Center(
-                        child: SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.black,
-                          ),
-                        ),
-                      )
-                    : const Icon(Icons.person, size: 28, color: Colors.black),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name,
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    Text(
-                      email,
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right, color: AppColors.textMuted),
-            ],
+                const Icon(Icons.chevron_right, color: AppColors.textMuted),
+              ],
+            ),
           ),
         );
       },
@@ -717,7 +949,12 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
           child: Column(
             children: items.asMap().entries.map((e) {
               final isLast = e.key == items.length - 1;
-              return _buildSettingRow(e.value.icon, e.value.label, isLast);
+              return _buildSettingRow(
+                e.value.icon,
+                e.value.label,
+                isLast,
+                e.value.onTap,
+              );
             }).toList(),
           ),
         ),
@@ -725,39 +962,47 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
     );
   }
 
-  Widget _buildSettingRow(IconData icon, String label, bool isLast) {
+  Widget _buildSettingRow(
+    IconData icon,
+    String label,
+    bool isLast,
+    VoidCallback? onTap,
+  ) {
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: AppColors.inputBackground,
-                  borderRadius: BorderRadius.circular(8),
+        InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: AppColors.inputBackground,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, size: 16, color: AppColors.textMuted),
                 ),
-                child: Icon(icon, size: 16, color: AppColors.textMuted),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  label,
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textPrimary,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                 ),
-              ),
-              const Icon(
-                Icons.chevron_right,
-                size: 18,
-                color: AppColors.textMuted,
-              ),
-            ],
+                const Icon(
+                  Icons.chevron_right,
+                  size: 18,
+                  color: AppColors.textMuted,
+                ),
+              ],
+            ),
           ),
         ),
         if (!isLast)
@@ -770,6 +1015,10 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
   }
 
   Widget _buildLogoutButton() {
+    final localeService = Provider.of<LocaleService>(context);
+    final lang = localeService.locale.languageCode;
+    String tr(String key) => AppTranslations.translate(key, lang);
+
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
@@ -798,7 +1047,7 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
                   Icon(Icons.logout, size: 18, color: Colors.red.shade400),
                   const SizedBox(width: 8),
                   Text(
-                    'Log Out',
+                    tr('log_out'),
                     style: GoogleFonts.inter(fontWeight: FontWeight.w600),
                   ),
                 ],
@@ -811,5 +1060,6 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
 class _SettingItem {
   final IconData icon;
   final String label;
-  _SettingItem(this.icon, this.label);
+  final VoidCallback? onTap;
+  _SettingItem(this.icon, this.label, {this.onTap});
 }

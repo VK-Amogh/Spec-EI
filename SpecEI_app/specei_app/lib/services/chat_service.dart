@@ -1,15 +1,14 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
+import '../core/env_config.dart';
 
 /// Groq AI Chat Service
 /// Uses Groq's fast inference API (OpenAI-compatible)
 /// Free tier available at console.groq.com
 class ChatService {
-  // Get your free API key from: https://console.groq.com/keys
-  // TODO: Move to env_config.dart for security
-  // Groq API Key
-  static const String _apiKey = 'INSERT_GROQ_API_KEY_HERE';
+  // API key loaded from env_config.dart (gitignored)
+  static String get _apiKey => EnvConfig.groqApiKey;
   static const String _baseUrl =
       'https://api.groq.com/openai/v1/chat/completions';
 

@@ -52,8 +52,6 @@ class BottomNavBar extends StatelessWidget {
                 label: 'Memory',
                 index: 1,
               ),
-              // Central action button (circle)
-              _buildCentralActionButton(context),
               // Camera
               _buildNavItem(
                 icon: Icons.videocam_rounded,

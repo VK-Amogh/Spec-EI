@@ -91,7 +91,16 @@ class MemoryDataService extends ChangeNotifier {
       // Load media
       final mediaData = await _supabaseService.getMedia(_userId!);
       _mediaItems.clear();
+      print('📦 Loading ${mediaData.length} media items from database');
       for (final data in mediaData) {
+        final aiDesc = data['ai_description'];
+        if (aiDesc != null && aiDesc.toString().isNotEmpty) {
+          print(
+            '  ✅ ${data['id']}: has AI description (${aiDesc.toString().length} chars)',
+          );
+        } else {
+          print('  ⚠️ ${data['id']}: NO AI description');
+        }
         _mediaItems.add(
           MediaItem(
             id: data['id'].toString(),
@@ -103,6 +112,7 @@ class MemoryDataService extends ChangeNotifier {
             fileUrl:
                 data['file_url'], // This was missing - required for audio playback!
             transcription: data['transcription'],
+            aiDescription: data['ai_description'],
             capturedAt: DateTime.parse(data['captured_at']),
             duration: data['duration_seconds'] != null
                 ? Duration(seconds: data['duration_seconds'])
@@ -432,6 +442,7 @@ class MediaItem {
   final String? filePath;
   final String? fileUrl;
   final String? transcription;
+  final String? aiDescription;
   final DateTime capturedAt;
   final Duration? duration;
 
@@ -441,6 +452,7 @@ class MediaItem {
     this.filePath,
     this.fileUrl,
     this.transcription,
+    this.aiDescription,
     DateTime? capturedAt,
     this.duration,
   }) : capturedAt = capturedAt ?? DateTime.now();

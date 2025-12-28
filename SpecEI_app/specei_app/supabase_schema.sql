@@ -43,3 +43,15 @@ CREATE TRIGGER trg_link_auth_identifiers
 BEFORE INSERT ON public.password_resets
 FOR EACH ROW
 EXECUTE FUNCTION public.link_auth_identifiers();
+
+-- ============================================================
+-- AI Search: Add ai_description column to media table
+-- ============================================================
+-- This column stores AI-generated descriptions of media content
+-- for semantic search (e.g., searching "teddy" finds images with teddy bears)
+
+ALTER TABLE public.media ADD COLUMN IF NOT EXISTS ai_description TEXT;
+
+-- Create index for faster text search on AI descriptions
+CREATE INDEX IF NOT EXISTS idx_media_ai_description 
+ON public.media USING gin(to_tsvector('english', COALESCE(ai_description, '')));

@@ -5,9 +5,11 @@ import 'package:image_picker/image_picker.dart';
 import '../../core/app_colors.dart';
 import '../../services/recording_service.dart';
 import '../../services/memory_data_service.dart';
+import '../../services/media_analysis_service.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../camera_screen.dart';
 import '../video_player_screen.dart';
+import '../../services/notification_service.dart';
 
 /// Memory Tab - Timeline view with memory cards
 /// Matches design from memory_timeline_ultimate_ui
@@ -47,6 +49,12 @@ class _MemoryTabState extends State<MemoryTab> {
   StreamSubscription? _positionSub;
   StreamSubscription? _durationSub;
 
+  // AI Search state
+  final MediaAnalysisService _analysisService = MediaAnalysisService();
+  final TextEditingController _searchController = TextEditingController();
+  List<MediaItem> _searchResults = [];
+  bool _isSearching = false;
+
   @override
   void initState() {
     super.initState();
@@ -68,6 +76,7 @@ class _MemoryTabState extends State<MemoryTab> {
     _clockTimer?.cancel();
     _memoryService.removeListener(_onMemoryDataChanged);
     _disposeAudioListeners();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -117,6 +126,387 @@ class _MemoryTabState extends State<MemoryTab> {
     _playerStateSub?.cancel();
     _positionSub?.cancel();
     _durationSub?.cancel();
+  }
+
+  // ==================== AI SEARCH METHODS ====================
+
+  /// Show AI-powered search modal
+  void _showSearchModal() {
+    _searchController.clear();
+    _searchResults = [];
+    _isSearching = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Container(
+          height: MediaQuery.of(context).size.height * 0.9,
+          decoration: BoxDecoration(
+            color: AppColors.background,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            children: [
+              // Handle bar
+              Container(
+                margin: const EdgeInsets.only(top: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+
+              // Header
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  children: [
+                    Icon(Icons.psychology, color: AppColors.primary, size: 28),
+                    const SizedBox(width: 12),
+                    Text(
+                      'AI Memory Search',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: AppColors.textMuted),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Search input
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: AppColors.primary.withOpacity(0.3),
+                    ),
+                  ),
+                  child: TextField(
+                    controller: _searchController,
+                    autofocus: true,
+                    style: GoogleFonts.inter(
+                      fontSize: 16,
+                      color: AppColors.textPrimary,
+                    ),
+                    decoration: InputDecoration(
+                      hintText:
+                          'Search by content... (e.g., "teddy", "meeting")',
+                      hintStyle: GoogleFonts.inter(
+                        fontSize: 14,
+                        color: AppColors.textMuted,
+                      ),
+                      prefixIcon: Icon(Icons.search, color: AppColors.primary),
+                      suffixIcon: _isSearching
+                          ? Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            )
+                          : IconButton(
+                              icon: Icon(
+                                Icons.arrow_forward,
+                                color: AppColors.primary,
+                              ),
+                              onPressed: () async {
+                                if (_searchController.text.trim().isEmpty)
+                                  return;
+                                setModalState(() => _isSearching = true);
+
+                                // Always reload fresh data from database first
+                                await _memoryService.loadFromDatabase();
+
+                                // Auto-analyze any pending media
+                                final pendingMedia = _memoryService.mediaItems
+                                    .where(
+                                      (m) =>
+                                          m.aiDescription == null ||
+                                          m.aiDescription!.isEmpty,
+                                    )
+                                    .toList();
+
+                                if (pendingMedia.isNotEmpty) {
+                                  print(
+                                    '🔄 Analyzing ${pendingMedia.length} pending media items...',
+                                  );
+                                  await _analysisService.analyzeAllPendingMedia(
+                                    pendingMedia,
+                                  );
+                                  // Reload after analysis to get fresh descriptions
+                                  await _memoryService.loadFromDatabase();
+                                }
+
+                                // Now search with fresh data
+                                print(
+                                  '🔎 Searching in ${_memoryService.mediaItems.length} items',
+                                );
+                                final results = await _analysisService
+                                    .searchMedia(
+                                      _searchController.text.trim(),
+                                      _memoryService.mediaItems,
+                                    );
+                                print(
+                                  '📊 Search returned ${results.length} results',
+                                );
+                                setModalState(() {
+                                  _searchResults = results;
+                                  _isSearching = false;
+                                });
+                              },
+                            ),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 16,
+                      ),
+                    ),
+                    onSubmitted: (value) async {
+                      if (value.trim().isEmpty) return;
+                      setModalState(() => _isSearching = true);
+
+                      // Always reload fresh data from database first
+                      await _memoryService.loadFromDatabase();
+
+                      // Auto-analyze any pending media
+                      final pendingMedia = _memoryService.mediaItems
+                          .where(
+                            (m) =>
+                                m.aiDescription == null ||
+                                m.aiDescription!.isEmpty,
+                          )
+                          .toList();
+
+                      if (pendingMedia.isNotEmpty) {
+                        print(
+                          '🔄 Analyzing ${pendingMedia.length} pending media items...',
+                        );
+                        await _analysisService.analyzeAllPendingMedia(
+                          pendingMedia,
+                        );
+                        // Reload after analysis to get fresh descriptions
+                        await _memoryService.loadFromDatabase();
+                      }
+
+                      // Now search with fresh data
+                      print(
+                        '🔎 Searching in ${_memoryService.mediaItems.length} items',
+                      );
+                      final results = await _analysisService.searchMedia(
+                        value.trim(),
+                        _memoryService.mediaItems,
+                      );
+                      print('📊 Search returned ${results.length} results');
+                      setModalState(() {
+                        _searchResults = results;
+                        _isSearching = false;
+                      });
+                    },
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Results section
+              Expanded(
+                child: _searchResults.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.image_search,
+                              size: 64,
+                              color: AppColors.textMuted.withOpacity(0.3),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              _searchController.text.isEmpty
+                                  ? 'Search your memories by content'
+                                  : 'No matching media found',
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'AI will find images, videos & audio\ncontaining what you search for',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                color: AppColors.textMuted.withOpacity(0.7),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        itemCount: _searchResults.length,
+                        itemBuilder: (context, index) {
+                          final media = _searchResults[index];
+                          return _buildSearchResultCard(media);
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Build a search result card
+  Widget _buildSearchResultCard(MediaItem media) {
+    IconData icon;
+    Color color;
+    String typeLabel;
+
+    switch (media.type) {
+      case MediaType.photo:
+        icon = Icons.photo;
+        color = Colors.blue;
+        typeLabel = 'Photo';
+        break;
+      case MediaType.video:
+        icon = Icons.videocam;
+        color = Colors.purple;
+        typeLabel = 'Video';
+        break;
+      case MediaType.audio:
+        icon = Icons.mic;
+        color = Colors.orange;
+        typeLabel = 'Audio';
+        break;
+    }
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.pop(context); // Close search modal
+        // Navigate to full view based on media type
+        if (media.type == MediaType.video && media.fileUrl != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => VideoPlayerScreen(videoUrl: media.fileUrl!),
+            ),
+          );
+        } else if (media.type == MediaType.audio && media.fileUrl != null) {
+          // Play audio
+          _recordingService.playAudio(media.fileUrl!);
+          setState(() => _playingUrl = media.fileUrl);
+        }
+        // For photos, the card already shows in the main view
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.2)),
+        ),
+        child: Row(
+          children: [
+            // Thumbnail or icon
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: media.type == MediaType.photo && media.fileUrl != null
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.network(
+                        media.fileUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) =>
+                            Icon(icon, color: color, size: 28),
+                      ),
+                    )
+                  : Icon(icon, color: color, size: 28),
+            ),
+            const SizedBox(width: 16),
+
+            // Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          typeLabel,
+                          style: GoogleFonts.inter(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: color,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        media.formattedTime,
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    media.aiDescription ??
+                        media.transcription ??
+                        'No description',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Arrow
+            Icon(Icons.chevron_right, color: AppColors.textMuted, size: 20),
+          ],
+        ),
+      ),
+    );
   }
 
   // Check if there's any content to display
@@ -181,8 +571,40 @@ class _MemoryTabState extends State<MemoryTab> {
                         _buildPatternBanner(),
                         const SizedBox(height: 24),
 
-                        // Past sections (Older than yesterday)
-                        ..._buildPastSections(),
+                        // Today section (newest first)
+                        _buildTimelineSection(
+                          label: 'Today',
+                          isActive: true,
+                          children: [
+                            // Media items from Supabase (photos/videos/audio captured today)
+                            ..._filteredMediaItems
+                                .where((m) {
+                                  final now = DateTime.now();
+                                  return m.capturedAt.year == now.year &&
+                                      m.capturedAt.month == now.month &&
+                                      m.capturedAt.day == now.day;
+                                })
+                                .toList()
+                                .reversed // Newest first within today
+                                .map(
+                                  (media) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 16),
+                                    child: _buildMediaMemoryCard(media),
+                                  ),
+                                ),
+                            if (_filteredMediaItems.where((m) {
+                              final now = DateTime.now();
+                              return m.capturedAt.year == now.year &&
+                                  m.capturedAt.month == now.month &&
+                                  m.capturedAt.day == now.day;
+                            }).isEmpty)
+                              _buildEmptyScheduleCard(
+                                'No activities for today',
+                              ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 32),
 
                         // Yesterday section
                         _buildTimelineSection(
@@ -199,6 +621,8 @@ class _MemoryTabState extends State<MemoryTab> {
                                       m.capturedAt.month == yesterday.month &&
                                       m.capturedAt.day == yesterday.day;
                                 })
+                                .toList()
+                                .reversed // Newest first within yesterday
                                 .map(
                                   (media) => Padding(
                                     padding: const EdgeInsets.only(bottom: 16),
@@ -222,97 +646,8 @@ class _MemoryTabState extends State<MemoryTab> {
 
                         const SizedBox(height: 32),
 
-                        // Today section with schedules
-                        _buildTimelineSection(
-                          label: 'Today',
-                          isActive: true,
-                          children: [
-                            // Today's reminders from service
-                            if (_memoryService.todayReminders.isNotEmpty)
-                              ..._memoryService.todayReminders.map(
-                                (reminder) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 16),
-                                  child: _buildScheduleCard(
-                                    title: reminder.title,
-                                    time: reminder.formattedTime,
-                                    type: 'reminder',
-                                  ),
-                                ),
-                              ),
-                            // Media items from Supabase (photos/videos/audio captured today)
-                            ..._filteredMediaItems
-                                .where((m) {
-                                  final now = DateTime.now();
-                                  return m.capturedAt.year == now.year &&
-                                      m.capturedAt.month == now.month &&
-                                      m.capturedAt.day == now.day;
-                                })
-                                .map(
-                                  (media) => Padding(
-                                    padding: const EdgeInsets.only(bottom: 16),
-                                    child: _buildMediaMemoryCard(media),
-                                  ),
-                                ),
-                            if (_memoryService.todayReminders.isEmpty &&
-                                _filteredMediaItems.where((m) {
-                                  final now = DateTime.now();
-                                  return m.capturedAt.year == now.year &&
-                                      m.capturedAt.month == now.month &&
-                                      m.capturedAt.day == now.day;
-                                }).isEmpty)
-                              _buildEmptyScheduleCard(
-                                'No activities for today',
-                              ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 32),
-
-                        // Tomorrow section
-                        _buildTimelineSection(
-                          label: 'Tomorrow',
-                          isActive: false,
-                          children: [
-                            if (_memoryService.tomorrowReminders.isNotEmpty)
-                              ..._memoryService.tomorrowReminders.map(
-                                (reminder) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 16),
-                                  child: _buildScheduleCard(
-                                    title: reminder.title,
-                                    time: reminder.formattedTime,
-                                    type: 'reminder',
-                                  ),
-                                ),
-                              )
-                            else
-                              _buildEmptyScheduleCard(
-                                'No schedules for tomorrow',
-                              ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 32),
-
-                        // Upcoming section
-                        _buildTimelineSection(
-                          label: 'Upcoming',
-                          isActive: false,
-                          children: [
-                            if (_memoryService.upcomingReminders.isNotEmpty)
-                              ..._memoryService.upcomingReminders.map(
-                                (reminder) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 16),
-                                  child: _buildScheduleCard(
-                                    title: reminder.title,
-                                    time: 'In ${reminder.daysAway} days',
-                                    type: 'reminder',
-                                  ),
-                                ),
-                              )
-                            else
-                              _buildEmptyScheduleCard('No upcoming schedules'),
-                          ],
-                        ),
+                        // Past sections (Older than yesterday) - ordered newest to oldest
+                        ..._buildPastSections(),
                       ],
                     ],
                   ),
@@ -364,30 +699,37 @@ class _MemoryTabState extends State<MemoryTab> {
           Row(
             children: [
               // Search button
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white.withOpacity(0.08)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.psychology, size: 16, color: AppColors.primary),
-                    const SizedBox(width: 6),
-                    Text(
-                      'SEARCH',
-                      style: GoogleFonts.inter(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                        letterSpacing: 1,
+              GestureDetector(
+                onTap: _showSearchModal,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white.withOpacity(0.08)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.psychology,
+                        size: 16,
+                        color: AppColors.primary,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 6),
+                      Text(
+                        'AI SEARCH',
+                        style: GoogleFonts.inter(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -1272,6 +1614,7 @@ class _MemoryTabState extends State<MemoryTab> {
     required String title,
     required String time,
     required String type,
+    String? id,
   }) {
     IconData icon;
     Color iconColor;
@@ -1348,7 +1691,78 @@ class _MemoryTabState extends State<MemoryTab> {
               ],
             ),
           ),
-          Icon(Icons.chevron_right, color: AppColors.textDimmed),
+          // 3-dot menu with delete option
+          if (id != null)
+            PopupMenuButton<String>(
+              icon: Icon(Icons.more_vert, color: AppColors.textDimmed),
+              color: AppColors.surface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              onSelected: (value) async {
+                if (value == 'delete') {
+                  // Show confirmation dialog
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      backgroundColor: AppColors.surface,
+                      title: Text(
+                        'Delete ${type == 'reminder' ? 'Reminder' : 'Note'}?',
+                        style: GoogleFonts.inter(color: AppColors.textPrimary),
+                      ),
+                      content: Text(
+                        'This action cannot be undone.',
+                        style: GoogleFonts.inter(color: AppColors.textMuted),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: Text(
+                            'Cancel',
+                            style: TextStyle(color: AppColors.textMuted),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: Text(
+                            'Delete',
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirm == true) {
+                    if (type == 'reminder') {
+                      await _memoryService.removeReminder(id);
+                      // Also cancel the scheduled notification
+                      await NotificationService().cancelReminder(
+                        int.tryParse(id) ?? 0,
+                      );
+                    } else if (type == 'note') {
+                      await _memoryService.removeNote(id);
+                    }
+                  }
+                }
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Delete',
+                        style: GoogleFonts.inter(color: Colors.red),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            )
+          else
+            Icon(Icons.chevron_right, color: AppColors.textDimmed),
         ],
       ),
     );
@@ -2518,16 +2932,7 @@ class _MemoryTabState extends State<MemoryTab> {
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
 
-    // Gather all items older than yesterday
-    final pastNotes = _memoryService.notes.where((n) {
-      final date = DateTime(
-        n.createdAt.year,
-        n.createdAt.month,
-        n.createdAt.day,
-      );
-      return date.isBefore(yesterday);
-    }).toList();
-
+    // Gather only media items older than yesterday (no notes/reminders)
     final pastMedia = _filteredMediaItems.where((m) {
       final date = DateTime(
         m.capturedAt.year,
@@ -2538,17 +2943,7 @@ class _MemoryTabState extends State<MemoryTab> {
     }).toList();
 
     // Group by date
-    final Map<DateTime, List<dynamic>> groupedItems = {};
-
-    for (var note in pastNotes) {
-      final date = DateTime(
-        note.createdAt.year,
-        note.createdAt.month,
-        note.createdAt.day,
-      );
-      if (!groupedItems.containsKey(date)) groupedItems[date] = [];
-      groupedItems[date]!.add(note);
-    }
+    final Map<DateTime, List<MediaItem>> groupedItems = {};
 
     for (var media in pastMedia) {
       final date = DateTime(
@@ -2560,35 +2955,25 @@ class _MemoryTabState extends State<MemoryTab> {
       groupedItems[date]!.add(media);
     }
 
-    // Sort dates ascending (Oldest -> Newest)
-    final sortedDates = groupedItems.keys.toList()..sort();
+    // Sort dates descending (Newest -> Oldest)
+    final sortedDates = groupedItems.keys.toList()
+      ..sort((a, b) => b.compareTo(a));
 
     return sortedDates.map((date) {
       final items = groupedItems[date]!;
-      // Sort items within date? Default order from service works.
+      // Sort items within date newest first
+      items.sort((a, b) => b.capturedAt.compareTo(a.capturedAt));
 
       return Column(
         children: [
           _buildTimelineSection(
             label: _formatFullDate(date).toUpperCase(),
             isActive: false,
-            children: items.map((item) {
-              if (item is NoteItem) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: _buildScheduleCard(
-                    title: item.title,
-                    time: item.formattedTime,
-                    type: 'note',
-                  ),
-                );
-              } else if (item is MediaItem) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: _buildMediaMemoryCard(item),
-                );
-              }
-              return const SizedBox.shrink();
+            children: items.map((media) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: _buildMediaMemoryCard(media),
+              );
             }).toList(),
           ),
           const SizedBox(height: 32),

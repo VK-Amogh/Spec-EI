@@ -15,6 +15,7 @@ import '../chat_screen.dart';
 import '../focus_mode_screen.dart';
 import '../notes_screen.dart';
 import '../../widgets/reminder_dialog.dart';
+import '../../services/notification_service.dart';
 
 import '../camera_screen.dart';
 
@@ -651,6 +652,14 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                           labelColor: Colors.orange,
                           title: reminder.title,
                           subtitle: reminder.formattedTime,
+                          id: reminder.id,
+                          type: 'reminder',
+                          onDelete: () async {
+                            await _memoryService.removeReminder(reminder.id);
+                            await NotificationService().cancelReminder(
+                              int.tryParse(reminder.id) ?? 0,
+                            );
+                          },
                         ),
                       ),
                     ),
@@ -663,6 +672,11 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                           iconColor: AppColors.primary,
                           title: note.title,
                           subtitle: note.formattedTime,
+                          id: note.id,
+                          type: 'note',
+                          onDelete: () async {
+                            await _memoryService.removeNote(note.id);
+                          },
                         ),
                       ),
                     ),
@@ -692,6 +706,9 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
     required String title,
     required String subtitle,
     bool showAccent = false,
+    String? id,
+    String? type,
+    VoidCallback? onDelete,
   }) {
     return Container(
       width: 156,
@@ -744,27 +761,113 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                   ),
                   child: Icon(icon, size: 18, color: iconColor),
                 ),
-                if (label != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: (labelColor ?? AppColors.textMuted).withOpacity(
-                        0.1,
+                // Right side: label and/or 3-dot menu
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (label != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: (labelColor ?? AppColors.textMuted)
+                              .withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          label,
+                          style: GoogleFonts.inter(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: labelColor ?? AppColors.textMuted,
+                          ),
+                        ),
                       ),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      label,
-                      style: GoogleFonts.inter(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: labelColor ?? AppColors.textMuted,
+                    if (onDelete != null)
+                      SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: PopupMenuButton<String>(
+                          icon: Icon(
+                            Icons.more_vert,
+                            color: AppColors.textDimmed,
+                            size: 16,
+                          ),
+                          padding: EdgeInsets.zero,
+                          iconSize: 16,
+                          color: AppColors.surface,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          onSelected: (value) async {
+                            if (value == 'delete') {
+                              final confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  backgroundColor: AppColors.surface,
+                                  title: Text(
+                                    'Delete ${type == 'reminder' ? 'Reminder' : 'Note'}?',
+                                    style: GoogleFonts.inter(
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                  content: Text(
+                                    'This action cannot be undone.',
+                                    style: GoogleFonts.inter(
+                                      color: AppColors.textMuted,
+                                    ),
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(ctx, false),
+                                      child: Text(
+                                        'Cancel',
+                                        style: TextStyle(
+                                          color: AppColors.textMuted,
+                                        ),
+                                      ),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(ctx, true),
+                                      child: Text(
+                                        'Delete',
+                                        style: TextStyle(color: Colors.red),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              if (confirm == true) {
+                                onDelete();
+                              }
+                            }
+                          },
+                          itemBuilder: (context) => [
+                            PopupMenuItem(
+                              value: 'delete',
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.delete_outline,
+                                    color: Colors.red,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Delete',
+                                    style: GoogleFonts.inter(color: Colors.red),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ),
+                  ],
+                ),
               ],
             ),
             Column(

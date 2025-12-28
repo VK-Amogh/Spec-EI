@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../core/app_colors.dart';
 import '../services/memory_data_service.dart';
+import '../services/notification_service.dart';
 
 /// Reminder Dialog for quick reminder creation
 class ReminderDialog extends StatefulWidget {
@@ -79,12 +80,21 @@ class _ReminderDialogState extends State<ReminderDialog> {
       );
 
       // Save to MemoryDataService (which saves to Supabase)
+      final reminderId = DateTime.now().millisecondsSinceEpoch;
       await _memoryService.addReminder(
         ReminderItem(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          id: reminderId.toString(),
           title: _titleController.text,
           dateTime: reminderDateTime,
         ),
+      );
+
+      // Schedule local notification to ring at the reminder time
+      await NotificationService().scheduleReminder(
+        id: reminderId,
+        title: '⏰ Reminder',
+        body: _titleController.text,
+        scheduledTime: reminderDateTime,
       );
 
       if (mounted) {

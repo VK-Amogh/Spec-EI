@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:battery_plus/battery_plus.dart';
+import 'dart:async';
 import '../../core/app_colors.dart';
 import '../../services/auth_service.dart';
 import '../login_screen.dart';
@@ -15,6 +17,85 @@ class SettingsTab extends StatefulWidget {
 class _SettingsTabState extends State<SettingsTab> {
   final _authService = AuthService();
   bool _isLoggingOut = false;
+
+  // Battery state
+  final Battery _battery = Battery();
+  int _batteryLevel = 0;
+  BatteryState _batteryState = BatteryState.unknown;
+  StreamSubscription<BatteryState>? _batteryStateSubscription;
+  Timer? _batteryTimer;
+  bool _batterySupported = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _initBattery();
+  }
+
+  @override
+  void dispose() {
+    _batteryStateSubscription?.cancel();
+    _batteryTimer?.cancel();
+    super.dispose();
+  }
+
+  /// Initialize battery monitoring
+  Future<void> _initBattery() async {
+    // Get initial battery level
+    try {
+      final level = await _battery.batteryLevel;
+      if (mounted) {
+        setState(() {
+          _batteryLevel = level;
+          _batterySupported = true;
+        });
+      }
+    } catch (e) {
+      debugPrint('Battery level error: $e');
+      // On web, battery API may not be supported
+      if (mounted) {
+        setState(() {
+          _batterySupported = false;
+          _batteryLevel = 100; // Default fallback
+        });
+      }
+    }
+
+    // Listen to battery state changes (charging, discharging, etc.)
+    try {
+      _batteryStateSubscription = _battery.onBatteryStateChanged.listen(
+        (state) {
+          if (mounted) {
+            setState(() => _batteryState = state);
+            _updateBatteryLevel();
+          }
+        },
+        onError: (e) {
+          debugPrint('Battery state stream error: $e');
+        },
+      );
+    } catch (e) {
+      debugPrint('Battery state subscription error: $e');
+    }
+
+    // Update battery level periodically (every 30 seconds)
+    _batteryTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      _updateBatteryLevel();
+    });
+  }
+
+  Future<void> _updateBatteryLevel() async {
+    if (!_batterySupported) return;
+
+    try {
+      final level = await _battery.batteryLevel;
+      if (mounted) {
+        setState(() => _batteryLevel = level);
+      }
+    } catch (e) {
+      debugPrint('Battery update error: $e');
+    }
+  }
 
   Future<void> _handleLogout() async {
     setState(() => _isLoggingOut = true);
@@ -47,7 +128,11 @@ class _SettingsTabState extends State<SettingsTab> {
           children: [
             // Header
             _buildHeader(),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
+
+            // Battery status card
+            _buildBatteryCard(),
+            const SizedBox(height: 24),
 
             // Profile section
             _buildProfileSection(),
@@ -106,6 +191,160 @@ class _SettingsTabState extends State<SettingsTab> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Build battery status card with live percentage
+  Widget _buildBatteryCard() {
+    final isCharging = _batteryState == BatteryState.charging;
+    final isFull = _batteryState == BatteryState.full;
+    final isLow = _batteryLevel <= 20;
+
+    // Battery color based on level
+    Color batteryColor;
+    if (!_batterySupported) {
+      batteryColor = AppColors.textMuted;
+    } else if (isCharging || isFull) {
+      batteryColor = AppColors.primary;
+    } else if (isLow) {
+      batteryColor = Colors.red;
+    } else if (_batteryLevel <= 50) {
+      batteryColor = Colors.orange;
+    } else {
+      batteryColor = AppColors.primary;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: batteryColor.withOpacity(0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: batteryColor.withOpacity(0.1),
+            blurRadius: 20,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Battery icon with fill level
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: batteryColor.withOpacity(0.15),
+                  shape: BoxShape.circle,
+                ),
+              ),
+              Icon(
+                isCharging
+                    ? Icons.battery_charging_full
+                    : (isFull
+                          ? Icons.battery_full
+                          : (isLow ? Icons.battery_alert : Icons.battery_std)),
+                size: 32,
+                color: batteryColor,
+              ),
+            ],
+          ),
+          const SizedBox(width: 16),
+          // Battery info
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Device Battery',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: AppColors.textMuted,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Text(
+                      _batterySupported ? '$_batteryLevel%' : 'N/A',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: batteryColor,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    if (!_batterySupported)
+                      Text(
+                        '(Web)',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    if (isCharging)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.bolt,
+                              size: 12,
+                              color: AppColors.primary,
+                            ),
+                            const SizedBox(width: 2),
+                            Text(
+                              'Charging',
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          // Battery level bar
+          Container(
+            width: 8,
+            height: 60,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 500),
+                width: 8,
+                height: 60 * (_batteryLevel / 100),
+                decoration: BoxDecoration(
+                  color: batteryColor,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
