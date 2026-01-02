@@ -43,3 +43,17 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Sensitive files - DO NOT COMMIT
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+lib/core/env_config.dart
+*.env
+.env*
+
+# Build logs
+build_log.txt
+build_verbose.txt
+
+# Backup directories
+*_backup*/

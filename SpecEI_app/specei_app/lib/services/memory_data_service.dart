@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'supabase_service.dart';
+import 'media_analysis_service.dart';
 
 /// Shared data service for managing reminders, notes, and media
 /// Used across Home and Memory tabs
@@ -42,11 +43,20 @@ class MemoryDataService extends ChangeNotifier {
 
   /// Load all user data from Supabase
   Future<void> loadFromDatabase() async {
-    if (_userId == null) return;
+    debugPrint('🔄 loadFromDatabase() called');
+    debugPrint('   👤 Current Firebase UID: $_userId');
+
+    if (_userId == null) {
+      debugPrint('   ❌ No user logged in! Cannot load data.');
+      return;
+    }
+
+    debugPrint('   ✅ User authenticated, fetching data...');
 
     try {
       // Load reminders
       final remindersData = await _supabaseService.getReminders(_userId!);
+      debugPrint('📋 Found ${remindersData.length} reminders in database');
       _reminders.clear();
       for (final data in remindersData) {
         _reminders.add(
@@ -61,6 +71,7 @@ class MemoryDataService extends ChangeNotifier {
 
       // Load notes
       final notesData = await _supabaseService.getNotes(_userId!);
+      debugPrint('📝 Found ${notesData.length} notes in database');
       _notes.clear();
       for (final data in notesData) {
         _notes.add(
@@ -75,6 +86,7 @@ class MemoryDataService extends ChangeNotifier {
 
       // Load focus sessions
       final sessionsData = await _supabaseService.getFocusSessions(_userId!);
+      debugPrint('🎯 Found ${sessionsData.length} focus sessions in database');
       _focusSessions.clear();
       for (final data in sessionsData) {
         _focusSessions.add(
@@ -88,42 +100,78 @@ class MemoryDataService extends ChangeNotifier {
         );
       }
 
-      // Load media
-      final mediaData = await _supabaseService.getMedia(_userId!);
-      _mediaItems.clear();
-      print('📦 Loading ${mediaData.length} media items from database');
-      for (final data in mediaData) {
-        final aiDesc = data['ai_description'];
-        if (aiDesc != null && aiDesc.toString().isNotEmpty) {
-          print(
-            '  ✅ ${data['id']}: has AI description (${aiDesc.toString().length} chars)',
-          );
-        } else {
-          print('  ⚠️ ${data['id']}: NO AI description');
-        }
-        _mediaItems.add(
-          MediaItem(
-            id: data['id'].toString(),
-            type: MediaType.values.firstWhere(
-              (t) => t.name == data['media_type'],
-              orElse: () => MediaType.photo,
+      // Load media - separate try-catch to handle media errors independently
+      try {
+        final mediaData = await _supabaseService.getMedia(_userId!);
+        debugPrint('📦 Loading ${mediaData.length} media items from database');
+
+        // preserve local items that are currently uploading
+        final localItems = _mediaItems.where((m) => m.isLocal).toList();
+
+        // Clear and add server data
+        _mediaItems.clear();
+        for (final data in mediaData) {
+          final aiDesc = data['ai_description'];
+          if (aiDesc != null && aiDesc.toString().isNotEmpty) {
+            debugPrint(
+              '  ✅ ${data['id']}: has AI description (${aiDesc.toString().length} chars)',
+            );
+          } else {
+            debugPrint('  ⚠️ ${data['id']}: NO AI description');
+          }
+          _mediaItems.add(
+            MediaItem(
+              id: data['id'].toString(),
+              type: MediaType.values.firstWhere(
+                (t) => t.name == data['media_type'],
+                orElse: () => MediaType.photo,
+              ),
+              filePath: data['file_path'],
+              fileUrl:
+                  data['file_url'], // This was missing - required for audio playback!
+              transcription: data['transcription'],
+              aiDescription: data['ai_description'],
+              capturedAt: DateTime.parse(data['captured_at']),
+              duration: data['duration_seconds'] != null
+                  ? Duration(seconds: data['duration_seconds'])
+                  : null,
             ),
-            filePath: data['file_path'],
-            fileUrl:
-                data['file_url'], // This was missing - required for audio playback!
-            transcription: data['transcription'],
-            aiDescription: data['ai_description'],
-            capturedAt: DateTime.parse(data['captured_at']),
-            duration: data['duration_seconds'] != null
-                ? Duration(seconds: data['duration_seconds'])
-                : null,
-          ),
+          );
+        }
+
+        // Re-add local items
+        if (localItems.isNotEmpty) {
+          debugPrint(
+            '  🔄 Preserving ${localItems.length} local items during sync',
+          );
+          // Filter out any local items that might have been synced (though IDs should differ)
+          // We rely on the fact that synced items get replaced with server IDs
+          _mediaItems.addAll(localItems);
+        }
+
+        // Sort by capturedAt (newest first)
+        _mediaItems.sort((a, b) => b.capturedAt.compareTo(a.capturedAt));
+      } catch (mediaError) {
+        debugPrint('⚠️ Failed to fetch media: $mediaError');
+        debugPrint(
+          '   Preserving ${_mediaItems.length} existing items and scheduling retry',
         );
+        // Schedule a retry after 3 seconds on media fetch failure
+        Future.delayed(const Duration(seconds: 3), () {
+          if (_userId != null) {
+            debugPrint('🔄 Retrying media fetch...');
+            loadFromDatabase();
+          }
+        });
       }
 
       notifyListeners();
-    } catch (e) {
-      print('Error loading from database: $e');
+    } catch (e, stackTrace) {
+      debugPrint('❌ Error loading from database: $e');
+      debugPrint(
+        '   Stack: ${stackTrace.toString().split('\n').take(3).join('\n')}',
+      );
+      // Don't clear data on error - preserve any local items
     }
   }
 
@@ -296,6 +344,7 @@ class MemoryDataService extends ChangeNotifier {
   }
 
   // Add media with file upload to storage bucket
+  // LOCAL-FIRST APPROACH: Add to UI immediately, then sync to Supabase
   Future<MediaItem?> addMediaWithFile({
     required MediaType type,
     required String fileName,
@@ -304,10 +353,31 @@ class MemoryDataService extends ChangeNotifier {
     String? transcription,
     Duration? duration,
   }) async {
-    if (_userId == null) return null;
+    if (_userId == null) {
+      debugPrint('❌ addMediaWithFile: No user logged in!');
+      return null;
+    }
 
+    // Create a temporary local media item for INSTANT UI feedback
+    final tempId = 'local_${DateTime.now().millisecondsSinceEpoch}';
+    final localMedia = MediaItem(
+      id: tempId,
+      type: type,
+      filePath: fileName,
+      fileUrl: null, // Will be updated after upload
+      transcription: transcription,
+      capturedAt: DateTime.now(),
+      duration: duration,
+      localBytes: fileBytes, // Store bytes for local preview
+    );
+
+    // Add to local list IMMEDIATELY for instant UI
+    _mediaItems.insert(0, localMedia);
+    notifyListeners();
+    debugPrint('✅ Added local media item: $tempId (type: ${type.name})');
+
+    // Now try to upload to Supabase in background
     try {
-      // Upload to Supabase storage and save metadata
       final result = await _supabaseService.saveMediaWithFile(
         firebaseUid: _userId!,
         mediaType: type.name,
@@ -319,25 +389,81 @@ class MemoryDataService extends ChangeNotifier {
       );
 
       if (result != null) {
-        final media = MediaItem(
-          id: result['id'].toString(),
-          type: type,
-          filePath: result['file_path'],
-          fileUrl: result['file_url'],
-          transcription: result['transcription'],
-          capturedAt: DateTime.parse(result['captured_at']),
-          duration: result['duration_seconds'] != null
-              ? Duration(seconds: result['duration_seconds'])
-              : null,
-        );
-        _mediaItems.insert(0, media);
-        notifyListeners();
-        return media;
+        // Update the local item with server data
+        final index = _mediaItems.indexWhere((m) => m.id == tempId);
+        if (index != -1) {
+          final serverMedia = MediaItem(
+            id: result['id'].toString(),
+            type: type,
+            filePath: result['file_path'],
+            fileUrl: result['file_url'],
+            transcription: result['transcription'],
+            capturedAt: DateTime.parse(result['captured_at']),
+            duration: result['duration_seconds'] != null
+                ? Duration(seconds: result['duration_seconds'])
+                : null,
+          );
+          _mediaItems[index] = serverMedia;
+          notifyListeners();
+          debugPrint('✅ Updated media with server data: ${serverMedia.id}');
+
+          // 🚀 AUTO-TRIGGER AI ANALYSIS
+          // Run in background - don't block the UI
+          _triggerAutoAnalysis(serverMedia);
+
+          return serverMedia;
+        }
       }
     } catch (e) {
-      print('Failed to add media with file: $e');
+      debugPrint('⚠️ Supabase sync failed (keeping local item): $e');
+      // Keep the local item even if sync fails - user still sees their media
     }
-    return null;
+
+    // Return the local item even if sync failed
+    return localMedia;
+  }
+
+  /// Auto-trigger AI analysis for newly saved media
+  /// Runs in background without blocking UI
+  Future<void> _triggerAutoAnalysis(MediaItem media) async {
+    try {
+      debugPrint(
+        '🤖 Auto-triggering AI analysis for ${media.id} (${media.type.name})',
+      );
+
+      final analysisService = MediaAnalysisService();
+      final description = await analysisService.analyzeAndStoreDescription(
+        media,
+      );
+
+      if (description != null) {
+        debugPrint('✅ AI analysis complete for ${media.id}');
+
+        // Update local item with AI description
+        final index = _mediaItems.indexWhere((m) => m.id == media.id);
+        if (index != -1) {
+          // Create updated media item with AI description
+          final updatedMedia = MediaItem(
+            id: media.id,
+            type: media.type,
+            filePath: media.filePath,
+            fileUrl: media.fileUrl,
+            transcription: media.transcription,
+            aiDescription: description,
+            capturedAt: media.capturedAt,
+            duration: media.duration,
+          );
+          _mediaItems[index] = updatedMedia;
+          notifyListeners();
+          debugPrint('✅ Updated local item with AI description');
+        }
+      } else {
+        debugPrint('⚠️ AI analysis returned no description for ${media.id}');
+      }
+    } catch (e) {
+      debugPrint('❌ Auto-analysis failed for ${media.id}: $e');
+      // Don't fail silently - the media is still saved, just without AI analysis
+    }
   }
 
   // Remove media item
@@ -445,6 +571,7 @@ class MediaItem {
   final String? aiDescription;
   final DateTime capturedAt;
   final Duration? duration;
+  final List<int>? localBytes; // For local preview before Supabase upload
 
   MediaItem({
     required this.id,
@@ -455,6 +582,7 @@ class MediaItem {
     this.aiDescription,
     DateTime? capturedAt,
     this.duration,
+    this.localBytes,
   }) : capturedAt = capturedAt ?? DateTime.now();
 
   String get formattedTime {
@@ -462,6 +590,13 @@ class MediaItem {
     final minute = capturedAt.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
   }
+
+  // Check if this is a local-only item (not yet synced to server)
+  bool get isLocal => id.startsWith('local_');
+
+  // Check if we can display this item
+  bool get hasDisplayableContent =>
+      fileUrl != null || (localBytes != null && localBytes!.isNotEmpty);
 }
 
 enum MediaType { photo, video, audio }

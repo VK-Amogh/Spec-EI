@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../core/app_colors.dart';
+import '../services/auth_service.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/glass_panel.dart';
 
@@ -81,21 +82,24 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     });
 
     try {
-      // In a real app, we would use the session from OTP verification.
-      // For this mock, we simply simulate a network delay and success.
-      // We do NOT call Firebase here because we don't have a valid reset code (mock flow).
-      await Future.delayed(const Duration(milliseconds: 1500));
+      // Send password reset email through Firebase
+      // The user will receive an email with a link to reset their password
+      final authService = AuthService();
+      await authService.resetPasswordWithEmail(
+        widget.identifier,
+        _passwordController.text,
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text(
-              'Demo: Password reset simulated! In production, your password would be updated.',
+              'Password reset successfully! You can now login with your new password.',
               style: TextStyle(color: Colors.black),
             ),
             backgroundColor: Colors.greenAccent,
             behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 4),
+            duration: const Duration(seconds: 3),
           ),
         );
         // Pop until we are back at the root (LoginScreen)
@@ -104,12 +108,27 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     } catch (e) {
       debugPrint('Error in reset password: $e');
       if (mounted) {
-        // Fallback: even if error, since this is mock, show success to user
-        // so they don't get stuck.
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: const Text('Password reset successfully (Mock)')),
-        );
-        Navigator.of(context).popUntil((route) => route.isFirst);
+        final message = e.toString();
+        // Check if this is actually an info message about email being sent
+        if (message.contains('password reset link has been sent')) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                message,
+                style: const TextStyle(color: Colors.black),
+              ),
+              backgroundColor: Colors.amber,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+          // Still navigate back since email was sent
+          Navigator.of(context).popUntil((route) => route.isFirst);
+        } else {
+          setState(() {
+            _errorMessage = message;
+          });
+        }
       }
     } finally {
       if (mounted) {

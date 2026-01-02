@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/audio_recording_dialog.dart';
 import '../core/app_colors.dart';
+import '../services/memory_data_service.dart';
 import 'tabs/home_tab.dart';
 import 'tabs/memory_tab.dart';
 import 'tabs/camera_tab.dart';
@@ -25,6 +26,8 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: _currentIndex);
+    // Eagerly load user data from Supabase when app starts
+    MemoryDataService().loadFromDatabase();
   }
 
   @override
@@ -91,7 +94,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.getBackground(context),
       body: Stack(
         children: [
           // Background glow effects

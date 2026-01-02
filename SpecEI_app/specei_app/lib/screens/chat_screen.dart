@@ -7,6 +7,10 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
 import '../core/app_colors.dart';
 import '../services/chat_service.dart';
+import '../services/media_analysis_service.dart';
+import '../services/memory_data_service.dart';
+import '../services/recording_service.dart';
+import 'video_player_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   final String? initialQuery;
@@ -25,6 +29,27 @@ class _ChatScreenState extends State<ChatScreen> {
   final List<Map<String, dynamic>> _messages = [];
   bool _isLoading = false;
   List<XFile>? _attachedImages;
+
+  // Memory Intelligence Persona
+  static const String _memorySystemPrompt = '''
+You are SpecEI’s Memory Intelligence Engine.
+Your role is to help the user recall past events, objects, and actions by reasoning over structured memory data.
+
+CRITICAL CONSTRAINTS:
+- You DO NOT directly analyze raw photos/videos (you see metadata).
+- You ONLY reason over the provided memory records.
+- You NEVER say you cannot see/hear. Use the provided metadata as ground truth.
+- You ALWAYS prioritize meaning and human-like recall.
+
+ANSWER GENERATION RULES:
+- State WHERE the item/event was last seen.
+- State WHEN it was last seen.
+- Mention WHAT evidence exists (photo, video, audio).
+- Use a calm, confident, human tone.
+- If confidence is low, state uncertainty politely.
+
+Example: "You last left your teddy on the bed in your bedroom around 9:10 PM. I have a photo from that moment."
+''';
 
   @override
   void initState() {
@@ -123,10 +148,76 @@ class _ChatScreenState extends State<ChatScreen> {
     _scrollToBottom();
 
     try {
-      final response = await _chatService.sendMessage(text);
+      String? contextPrompt;
+      SemanticSearchResult? searchResult;
+
+      // 1. Check for Memory Intent (simple heuristic)
+      final lowerText = text.toLowerCase();
+      final isMemoryQuery =
+          lowerText.startsWith('where') ||
+          lowerText.startsWith('find') ||
+          lowerText.startsWith('search') ||
+          lowerText.startsWith('what did') ||
+          lowerText.startsWith('when did') ||
+          lowerText.contains('lost') ||
+          lowerText.contains('seen');
+
+      if (isMemoryQuery) {
+        if (mounted) setState(() => _isLoading = true); // Ensure loading
+
+        // 2. Perform Semantic Search
+        searchResult = await MediaAnalysisService().semanticSearch(
+          text,
+          MemoryDataService().mediaItems,
+        );
+
+        // 3. Format Results for Prompt
+        if (searchResult!.results.isNotEmpty) {
+          final memoryRecords = searchResult!.results
+              .map((item) {
+                return '''
+- memory_id: ${item.id}
+- type: ${item.type.name}
+- time: ${item.capturedAt}
+- description: ${item.aiDescription ?? item.transcription ?? 'No description'}
+- related_text: ${item.transcription ?? ''}
+''';
+              })
+              .join('\n');
+
+          contextPrompt =
+              '''
+$_memorySystemPrompt
+
+--------------------------------------------------
+USER QUERY: "$text"
+--------------------------------------------------
+RETRIEVED MEMORY RECORDS (Ground Truth):
+$memoryRecords
+--------------------------------------------------
+Answer the user's question using ONLY the above memory records.
+''';
+        }
+      }
+
+      // 4. Send Message (with or without memory context)
+      final response = await _chatService.sendMessage(
+        text,
+        systemContext: contextPrompt,
+      );
+
       if (mounted) {
         setState(() {
           _messages.add({'role': 'assistant', 'content': response});
+
+          // 5. If we had memory results, append them as a special "evidence" message
+          if (searchResult != null && searchResult!.results.isNotEmpty) {
+            _messages.add({
+              'role': 'memory_evidence',
+              'items': searchResult!.results.take(10).toList(), // Limit to 10
+            });
+          }
+
           _isLoading = false;
         });
         _scrollToBottom();
@@ -279,8 +370,14 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget _buildMessage(Map<String, dynamic> message) {
     final isUser = message['role'] == 'user';
     final isError = message['role'] == 'error';
+    final isMemoryEvidence = message['role'] == 'memory_evidence';
     final isImage = message['isImage'] == true;
     final imagePath = message['imagePath'] as String?;
+
+    if (isMemoryEvidence) {
+      final items = message['items'] as List<MediaItem>;
+      return _buildMemoryEvidence(items);
+    }
 
     if (isUser) {
       return Align(
@@ -615,6 +712,133 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildMemoryEvidence(List<MediaItem> items) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 24, left: 16),
+      height: 140,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: items.length,
+        itemBuilder: (context, index) {
+          final item = items[index];
+          return Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: _buildEvidenceCard(item),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildEvidenceCard(MediaItem item) {
+    final isVideo = item.type == MediaType.video;
+    final icon = isVideo ? Icons.play_circle_fill : Icons.photo;
+
+    return GestureDetector(
+      onTap: () => _openMedia(item),
+      child: Container(
+        width: 140,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withOpacity(0.1)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Thumbnail
+            if (item.fileUrl != null)
+              Image.network(
+                item.fileUrl!,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  color: Colors.grey.shade900,
+                  child: Icon(Icons.broken_image, color: Colors.grey),
+                ),
+              )
+            else
+              Container(color: Colors.grey.shade900),
+
+            // Overlay gradient
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.transparent, Colors.black.withOpacity(0.7)],
+                ),
+              ),
+            ),
+
+            // Icon centered
+            Center(
+              child: Icon(icon, color: Colors.white.withOpacity(0.8), size: 32),
+            ),
+
+            // Time label
+            Positioned(
+              bottom: 8,
+              left: 8,
+              right: 8,
+              child: Text(
+                _formatDate(item.capturedAt),
+                style: GoogleFonts.inter(fontSize: 10, color: Colors.white),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final diff = now.difference(date);
+    if (diff.inDays == 0) {
+      return '${date.hour > 12 ? date.hour - 12 : date.hour}:${date.minute.toString().padLeft(2, '0')} ${date.hour >= 12 ? 'PM' : 'AM'}';
+    } else {
+      return '${date.month}/${date.day} ${date.hour > 12 ? date.hour - 12 : date.hour}:${date.minute.toString().padLeft(2, '0')} ${date.hour >= 12 ? 'PM' : 'AM'}';
+    }
+  }
+
+  void _openMedia(MediaItem item) {
+    if (item.fileUrl == null) return;
+
+    if (item.type == MediaType.video) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => VideoPlayerScreen(videoUrl: item.fileUrl!),
+        ),
+      );
+    } else if (item.type == MediaType.photo) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => Scaffold(
+            backgroundColor: Colors.black,
+            appBar: AppBar(
+              backgroundColor: Colors.transparent,
+              iconTheme: IconThemeData(color: Colors.white),
+            ),
+            body: Center(
+              child: InteractiveViewer(child: Image.network(item.fileUrl!)),
+            ),
+          ),
+        ),
+      );
+    } else if (item.type == MediaType.audio) {
+      // Allow playing audio
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Playing audio clip...')));
+      RecordingService().playAudio(item.fileUrl!);
+    }
   }
 
   Widget _buildSuggestionChip(String label) {

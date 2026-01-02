@@ -13,14 +13,26 @@ class PermissionStateService extends ChangeNotifier {
   // Permission states controlled by Device Settings toggles
   bool _microphoneEnabled = false;
   bool _cameraEnabled = false;
-  bool _cloudSyncEnabled = true;
 
-  // Getters
+  // Manual Control states
+  bool _recordingModeEnabled = false;
+  bool _timedRecordingEnabled = false;
+  bool _privacyZonesEnabled = false;
+  bool _spatialAudioEnabled = false;
+  bool _aiMaskingEnabled = false;
+
+  // Getters - Permissions
   bool get isMicrophoneEnabled => _microphoneEnabled;
   bool get isCameraEnabled => _cameraEnabled;
-  bool get isCloudSyncEnabled => _cloudSyncEnabled;
 
-  // Setters that notify listeners
+  // Getters - Manual Controls
+  bool get isRecordingModeEnabled => _recordingModeEnabled;
+  bool get isTimedRecordingEnabled => _timedRecordingEnabled;
+  bool get isPrivacyZonesEnabled => _privacyZonesEnabled;
+  bool get isSpatialAudioEnabled => _spatialAudioEnabled;
+  bool get isAiMaskingEnabled => _aiMaskingEnabled;
+
+  // Setters - Permissions
   void setMicrophoneEnabled(bool value) {
     if (_microphoneEnabled != value) {
       _microphoneEnabled = value;
@@ -35,14 +47,43 @@ class PermissionStateService extends ChangeNotifier {
     }
   }
 
-  void setCloudSyncEnabled(bool value) {
-    if (_cloudSyncEnabled != value) {
-      _cloudSyncEnabled = value;
+  // Setters - Manual Controls
+  void setRecordingModeEnabled(bool value) {
+    if (_recordingModeEnabled != value) {
+      _recordingModeEnabled = value;
       notifyListeners();
     }
   }
 
-  // Toggle methods
+  void setTimedRecordingEnabled(bool value) {
+    if (_timedRecordingEnabled != value) {
+      _timedRecordingEnabled = value;
+      notifyListeners();
+    }
+  }
+
+  void setPrivacyZonesEnabled(bool value) {
+    if (_privacyZonesEnabled != value) {
+      _privacyZonesEnabled = value;
+      notifyListeners();
+    }
+  }
+
+  void setSpatialAudioEnabled(bool value) {
+    if (_spatialAudioEnabled != value) {
+      _spatialAudioEnabled = value;
+      notifyListeners();
+    }
+  }
+
+  void setAiMaskingEnabled(bool value) {
+    if (_aiMaskingEnabled != value) {
+      _aiMaskingEnabled = value;
+      notifyListeners();
+    }
+  }
+
+  // Toggle methods - Permissions
   void toggleMicrophone() {
     _microphoneEnabled = !_microphoneEnabled;
     notifyListeners();
@@ -53,8 +94,29 @@ class PermissionStateService extends ChangeNotifier {
     notifyListeners();
   }
 
-  void toggleCloudSync() {
-    _cloudSyncEnabled = !_cloudSyncEnabled;
+  // Toggle methods - Manual Controls
+  void toggleRecordingMode() {
+    _recordingModeEnabled = !_recordingModeEnabled;
+    notifyListeners();
+  }
+
+  void toggleTimedRecording() {
+    _timedRecordingEnabled = !_timedRecordingEnabled;
+    notifyListeners();
+  }
+
+  void togglePrivacyZones() {
+    _privacyZonesEnabled = !_privacyZonesEnabled;
+    notifyListeners();
+  }
+
+  void toggleSpatialAudio() {
+    _spatialAudioEnabled = !_spatialAudioEnabled;
+    notifyListeners();
+  }
+
+  void toggleAiMasking() {
+    _aiMaskingEnabled = !_aiMaskingEnabled;
     notifyListeners();
   }
 }

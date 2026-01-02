@@ -760,15 +760,6 @@ class _DeviceTabState extends State<DeviceTab>
                 status: 'Inactive',
                 isActive: false,
               ),
-              const SizedBox(height: 16),
-              _buildSensorRow(
-                icon: Icons.cloud_sync,
-                iconColor: AppColors.primary,
-                label: 'Cloud Sync',
-                status: 'Active & Encrypted',
-                statusColor: AppColors.primary,
-                isActive: true,
-              ),
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,

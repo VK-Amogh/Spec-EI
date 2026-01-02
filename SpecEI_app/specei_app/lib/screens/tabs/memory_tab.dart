@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:async';
+import 'dart:typed_data';
 import 'package:image_picker/image_picker.dart';
 import '../../core/app_colors.dart';
 import '../../services/recording_service.dart';
@@ -144,7 +145,7 @@ class _MemoryTabState extends State<MemoryTab> {
         builder: (context, setModalState) => Container(
           height: MediaQuery.of(context).size.height * 0.9,
           decoration: BoxDecoration(
-            color: AppColors.background,
+            color: AppColors.getBackground(context),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: Column(
@@ -172,12 +173,15 @@ class _MemoryTabState extends State<MemoryTab> {
                       style: GoogleFonts.spaceGrotesk(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
+                        color: AppColors.getTextPrimary(context),
                       ),
                     ),
                     const Spacer(),
                     IconButton(
-                      icon: const Icon(Icons.close, color: AppColors.textMuted),
+                      icon: Icon(
+                        Icons.close,
+                        color: AppColors.getTextMuted(context),
+                      ),
                       onPressed: () => Navigator.pop(context),
                     ),
                   ],
@@ -189,7 +193,7 @@ class _MemoryTabState extends State<MemoryTab> {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: AppColors.surface,
+                    color: AppColors.getSurface(context),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: AppColors.primary.withOpacity(0.3),
@@ -200,14 +204,14 @@ class _MemoryTabState extends State<MemoryTab> {
                     autofocus: true,
                     style: GoogleFonts.inter(
                       fontSize: 16,
-                      color: AppColors.textPrimary,
+                      color: AppColors.getTextPrimary(context),
                     ),
                     decoration: InputDecoration(
                       hintText:
                           'Search by content... (e.g., "teddy", "meeting")',
                       hintStyle: GoogleFonts.inter(
                         fontSize: 14,
-                        color: AppColors.textMuted,
+                        color: AppColors.getTextMuted(context),
                       ),
                       prefixIcon: Icon(Icons.search, color: AppColors.primary),
                       suffixIcon: _isSearching
@@ -235,21 +239,21 @@ class _MemoryTabState extends State<MemoryTab> {
                                 // Always reload fresh data from database first
                                 await _memoryService.loadFromDatabase();
 
-                                // Auto-analyze any pending media
-                                final pendingMedia = _memoryService.mediaItems
+                                // Force re-analyze ALL videos and audio to apply new keywords
+                                final videosAndAudio = _memoryService.mediaItems
                                     .where(
                                       (m) =>
-                                          m.aiDescription == null ||
-                                          m.aiDescription!.isEmpty,
+                                          m.type == MediaType.video ||
+                                          m.type == MediaType.audio,
                                     )
                                     .toList();
 
-                                if (pendingMedia.isNotEmpty) {
+                                if (videosAndAudio.isNotEmpty) {
                                   print(
-                                    '🔄 Analyzing ${pendingMedia.length} pending media items...',
+                                    '🔄 Force re-analyzing ${videosAndAudio.length} videos/audio...',
                                   );
-                                  await _analysisService.analyzeAllPendingMedia(
-                                    pendingMedia,
+                                  await _analysisService.forceReanalyzeAllMedia(
+                                    videosAndAudio,
                                   );
                                   // Reload after analysis to get fresh descriptions
                                   await _memoryService.loadFromDatabase();
@@ -259,16 +263,20 @@ class _MemoryTabState extends State<MemoryTab> {
                                 print(
                                   '🔎 Searching in ${_memoryService.mediaItems.length} items',
                                 );
-                                final results = await _analysisService
-                                    .searchMedia(
+                                // Use semantic search with AI keyword expansion
+                                final searchResult = await _analysisService
+                                    .semanticSearch(
                                       _searchController.text.trim(),
                                       _memoryService.mediaItems,
                                     );
                                 print(
-                                  '📊 Search returned ${results.length} results',
+                                  '📊 Search returned ${searchResult.results.length} results',
+                                );
+                                print(
+                                  '🔑 Keywords used: ${searchResult.keywords}',
                                 );
                                 setModalState(() {
-                                  _searchResults = results;
+                                  _searchResults = searchResult.results;
                                   _isSearching = false;
                                 });
                               },
@@ -286,37 +294,41 @@ class _MemoryTabState extends State<MemoryTab> {
                       // Always reload fresh data from database first
                       await _memoryService.loadFromDatabase();
 
-                      // Auto-analyze any pending media
-                      final pendingMedia = _memoryService.mediaItems
+                      // Force re-analyze ALL videos and audio to apply new keywords
+                      final videosAndAudio = _memoryService.mediaItems
                           .where(
                             (m) =>
-                                m.aiDescription == null ||
-                                m.aiDescription!.isEmpty,
+                                m.type == MediaType.video ||
+                                m.type == MediaType.audio,
                           )
                           .toList();
 
-                      if (pendingMedia.isNotEmpty) {
+                      if (videosAndAudio.isNotEmpty) {
                         print(
-                          '🔄 Analyzing ${pendingMedia.length} pending media items...',
+                          '🔄 Force re-analyzing ${videosAndAudio.length} videos/audio...',
                         );
-                        await _analysisService.analyzeAllPendingMedia(
-                          pendingMedia,
+                        await _analysisService.forceReanalyzeAllMedia(
+                          videosAndAudio,
                         );
                         // Reload after analysis to get fresh descriptions
                         await _memoryService.loadFromDatabase();
                       }
 
-                      // Now search with fresh data
+                      // Now search with fresh data using semantic search
                       print(
                         '🔎 Searching in ${_memoryService.mediaItems.length} items',
                       );
-                      final results = await _analysisService.searchMedia(
-                        value.trim(),
-                        _memoryService.mediaItems,
+                      final searchResult = await _analysisService
+                          .semanticSearch(
+                            value.trim(),
+                            _memoryService.mediaItems,
+                          );
+                      print(
+                        '📊 Search returned ${searchResult.results.length} results',
                       );
-                      print('📊 Search returned ${results.length} results');
+                      print('🔑 Keywords used: ${searchResult.keywords}');
                       setModalState(() {
-                        _searchResults = results;
+                        _searchResults = searchResult.results;
                         _isSearching = false;
                       });
                     },
@@ -345,7 +357,7 @@ class _MemoryTabState extends State<MemoryTab> {
                                   : 'No matching media found',
                               style: GoogleFonts.inter(
                                 fontSize: 14,
-                                color: AppColors.textMuted,
+                                color: AppColors.getTextMuted(context),
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -401,28 +413,47 @@ class _MemoryTabState extends State<MemoryTab> {
     }
 
     return GestureDetector(
-      onTap: () {
-        Navigator.pop(context); // Close search modal
+      onTap: () async {
         // Navigate to full view based on media type
+        // DON'T close modal first - so back button returns to search
         if (media.type == MediaType.video && media.fileUrl != null) {
-          Navigator.push(
+          await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => VideoPlayerScreen(videoUrl: media.fileUrl!),
             ),
           );
+          // After returning from video, we're back in the search modal
         } else if (media.type == MediaType.audio && media.fileUrl != null) {
-          // Play audio
+          // Play audio without closing modal
           _recordingService.playAudio(media.fileUrl!);
           setState(() => _playingUrl = media.fileUrl);
+        } else if (media.type == MediaType.photo && media.fileUrl != null) {
+          // View photo in full screen
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => Scaffold(
+                backgroundColor: Colors.black,
+                appBar: AppBar(
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                ),
+                body: Center(
+                  child: InteractiveViewer(
+                    child: Image.network(media.fileUrl!, fit: BoxFit.contain),
+                  ),
+                ),
+              ),
+            ),
+          );
         }
-        // For photos, the card already shows in the main view
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: AppColors.getSurface(context),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: color.withOpacity(0.2)),
         ),
@@ -480,29 +511,21 @@ class _MemoryTabState extends State<MemoryTab> {
                         media.formattedTime,
                         style: GoogleFonts.inter(
                           fontSize: 11,
-                          color: AppColors.textMuted,
+                          color: AppColors.getTextMuted(context),
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    media.aiDescription ??
-                        media.transcription ??
-                        'No description',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                    ),
                   ),
                 ],
               ),
             ),
 
             // Arrow
-            Icon(Icons.chevron_right, color: AppColors.textMuted, size: 20),
+            Icon(
+              Icons.chevron_right,
+              color: AppColors.getTextMuted(context),
+              size: 20,
+            ),
           ],
         ),
       ),
@@ -567,10 +590,6 @@ class _MemoryTabState extends State<MemoryTab> {
                         // ALL filter - show Visuals/Audio tabs
                         _buildAllFilterContent(),
                       ] else ...[
-                        // Pattern detected banner
-                        _buildPatternBanner(),
-                        const SizedBox(height: 24),
-
                         // Today section (newest first)
                         _buildTimelineSection(
                           label: 'Today',
@@ -675,14 +694,14 @@ class _MemoryTabState extends State<MemoryTab> {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: AppColors.getSurface(context),
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white.withOpacity(0.08)),
+                  border: Border.all(color: AppColors.getBorderLight(context)),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.arrow_back,
                   size: 20,
-                  color: AppColors.textMuted,
+                  color: AppColors.getTextMuted(context),
                 ),
               ),
               const SizedBox(width: 20),
@@ -691,7 +710,7 @@ class _MemoryTabState extends State<MemoryTab> {
                 style: GoogleFonts.spaceGrotesk(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
+                  color: AppColors.getTextPrimary(context),
                 ),
               ),
             ],
@@ -707,9 +726,11 @@ class _MemoryTabState extends State<MemoryTab> {
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.surface,
+                    color: AppColors.getSurface(context),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.white.withOpacity(0.08)),
+                    border: Border.all(
+                      color: AppColors.getBorderLight(context),
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -724,7 +745,7 @@ class _MemoryTabState extends State<MemoryTab> {
                         style: GoogleFonts.inter(
                           fontSize: 9,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
+                          color: AppColors.getTextPrimary(context),
                           letterSpacing: 1,
                         ),
                       ),
@@ -1040,7 +1061,7 @@ class _MemoryTabState extends State<MemoryTab> {
             height: height,
             color: isActive
                 ? AppColors.primary
-                : Colors.grey.shade600.withOpacity(opacity),
+                : AppColors.getTextMuted(context).withOpacity(opacity),
           ),
           const SizedBox(height: 4),
           if (label.isNotEmpty)
@@ -1049,7 +1070,9 @@ class _MemoryTabState extends State<MemoryTab> {
               style: GoogleFonts.inter(
                 fontSize: 10,
                 fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-                color: isActive ? AppColors.primary : AppColors.textMuted,
+                color: isActive
+                    ? AppColors.primary
+                    : AppColors.getTextMuted(context),
               ),
             ),
         ],
@@ -1070,14 +1093,14 @@ class _MemoryTabState extends State<MemoryTab> {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: AppColors.getSurface(context),
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.white.withOpacity(0.08)),
+                border: Border.all(color: AppColors.getBorderLight(context)),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.tune,
                 size: 20,
-                color: AppColors.textMuted,
+                color: AppColors.getTextMuted(context),
               ),
             ),
             const SizedBox(width: 12),
@@ -1095,12 +1118,14 @@ class _MemoryTabState extends State<MemoryTab> {
                       vertical: 10,
                     ),
                     decoration: BoxDecoration(
-                      color: isSelected ? AppColors.primary : AppColors.surface,
+                      color: isSelected
+                          ? AppColors.primary
+                          : AppColors.getSurface(context),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color: isSmartGrouping && !isSelected
                             ? AppColors.primary.withOpacity(0.2)
-                            : Colors.white.withOpacity(0.08),
+                            : AppColors.getBorderLight(context),
                       ),
                     ),
                     child: Row(
@@ -1115,7 +1140,7 @@ class _MemoryTabState extends State<MemoryTab> {
                                 ? Colors.black
                                 : isSmartGrouping
                                 ? AppColors.primary
-                                : AppColors.textSecondary,
+                                : AppColors.getTextSecondary(context),
                             letterSpacing: 0.5,
                           ),
                         ),
@@ -1141,67 +1166,6 @@ class _MemoryTabState extends State<MemoryTab> {
     );
   }
 
-  Widget _buildPatternBanner() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(Icons.auto_awesome, size: 20, color: AppColors.primary),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'PATTERN DETECTED',
-                  style: GoogleFonts.inter(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
-                    letterSpacing: 1,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                RichText(
-                  text: TextSpan(
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      color: AppColors.textMuted,
-                    ),
-                    children: [
-                      const TextSpan(text: "You've discussed "),
-                      TextSpan(
-                        text: 'interaction design',
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const TextSpan(text: ' in 3 consecutive meetings.'),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   /// Build ALL filter content with Visuals/Audio tabs
   Widget _buildAllFilterContent() {
     return Column(
@@ -1221,9 +1185,9 @@ class _MemoryTabState extends State<MemoryTab> {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.getSurface(context),
         borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: AppColors.getBorderLight(context)),
       ),
       child: Row(
         children: [
@@ -1364,13 +1328,31 @@ class _MemoryTabState extends State<MemoryTab> {
   /// Build a visual card (photo or video)
   Widget _buildVisualCard(MediaItem media) {
     final isVideo = media.type == MediaType.video;
+    final hasLocalBytes =
+        media.localBytes != null && media.localBytes!.isNotEmpty;
+    final hasRemoteUrl = media.fileUrl != null && media.fileUrl!.isNotEmpty;
 
     return GestureDetector(
       onTap: () {
         if (isVideo) {
-          _showVideoPlayer(media.fileUrl ?? '');
+          if (hasRemoteUrl) {
+            _showVideoPlayer(media.fileUrl!);
+          } else {
+            // Video not yet uploaded - show message
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Video is uploading... Please wait.'),
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
         } else {
-          _showPhotoViewer(media.fileUrl ?? '');
+          // Photo - can show from local bytes or remote URL
+          if (hasRemoteUrl) {
+            _showPhotoViewer(media.fileUrl!);
+          } else if (hasLocalBytes) {
+            _showLocalPhotoViewer(media.localBytes!);
+          }
         }
       },
       child: Container(
@@ -1389,23 +1371,53 @@ class _MemoryTabState extends State<MemoryTab> {
               ),
               child: Stack(
                 children: [
-                  Image.network(
-                    media.fileUrl ?? '',
-                    height: 180,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
+                  // Use local bytes if available, otherwise network URL
+                  if (hasLocalBytes)
+                    Image.memory(
+                      Uint8List.fromList(media.localBytes!),
+                      height: 180,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        height: 180,
+                        color: Colors.grey.shade900,
+                        child: const Center(
+                          child: Icon(
+                            Icons.image_not_supported,
+                            color: Colors.grey,
+                            size: 48,
+                          ),
+                        ),
+                      ),
+                    )
+                  else if (hasRemoteUrl)
+                    Image.network(
+                      media.fileUrl!,
+                      height: 180,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        height: 180,
+                        color: Colors.grey.shade900,
+                        child: const Center(
+                          child: Icon(
+                            Icons.image_not_supported,
+                            color: Colors.grey,
+                            size: 48,
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    Container(
                       height: 180,
                       color: Colors.grey.shade900,
                       child: const Center(
-                        child: Icon(
-                          Icons.image_not_supported,
-                          color: Colors.grey,
-                          size: 48,
+                        child: CircularProgressIndicator(
+                          color: AppColors.primary,
                         ),
                       ),
                     ),
-                  ),
                   if (isVideo)
                     Positioned.fill(
                       child: Container(
@@ -1416,6 +1428,43 @@ class _MemoryTabState extends State<MemoryTab> {
                             color: Colors.white,
                             size: 56,
                           ),
+                        ),
+                      ),
+                    ),
+                  // Show "uploading" indicator for local items
+                  if (media.isLocal)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const SizedBox(
+                              width: 12,
+                              height: 12,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Uploading',
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -1441,7 +1490,7 @@ class _MemoryTabState extends State<MemoryTab> {
                         style: GoogleFonts.inter(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
-                          color: AppColors.textPrimary,
+                          color: AppColors.getTextPrimary(context),
                         ),
                       ),
                     ],
@@ -1591,7 +1640,7 @@ class _MemoryTabState extends State<MemoryTab> {
             style: GoogleFonts.spaceGrotesk(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
+              color: AppColors.getTextPrimary(context),
             ),
           ),
           const SizedBox(height: 8),
@@ -1677,7 +1726,7 @@ class _MemoryTabState extends State<MemoryTab> {
                   style: GoogleFonts.inter(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                    color: AppColors.getTextPrimary(context),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -1685,7 +1734,7 @@ class _MemoryTabState extends State<MemoryTab> {
                   time,
                   style: GoogleFonts.robotoMono(
                     fontSize: 12,
-                    color: AppColors.textMuted,
+                    color: AppColors.getTextMuted(context),
                   ),
                 ),
               ],
@@ -1694,8 +1743,11 @@ class _MemoryTabState extends State<MemoryTab> {
           // 3-dot menu with delete option
           if (id != null)
             PopupMenuButton<String>(
-              icon: Icon(Icons.more_vert, color: AppColors.textDimmed),
-              color: AppColors.surface,
+              icon: Icon(
+                Icons.more_vert,
+                color: AppColors.getTextMuted(context),
+              ),
+              color: AppColors.getSurface(context),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -1762,7 +1814,7 @@ class _MemoryTabState extends State<MemoryTab> {
               ],
             )
           else
-            Icon(Icons.chevron_right, color: AppColors.textDimmed),
+            Icon(Icons.chevron_right, color: AppColors.getTextMuted(context)),
         ],
       ),
     );
@@ -1773,9 +1825,11 @@ class _MemoryTabState extends State<MemoryTab> {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: AppColors.surface.withOpacity(0.5),
+        color: AppColors.getSurface(context).withOpacity(0.5),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(
+          color: AppColors.getBorderLight(context).withOpacity(0.5),
+        ),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -1788,7 +1842,10 @@ class _MemoryTabState extends State<MemoryTab> {
           const SizedBox(width: 12),
           Text(
             message,
-            style: GoogleFonts.inter(fontSize: 14, color: AppColors.textMuted),
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              color: AppColors.getTextMuted(context),
+            ),
           ),
         ],
       ),
@@ -1809,7 +1866,7 @@ class _MemoryTabState extends State<MemoryTab> {
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: AppColors.getSurface(context),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: AppColors.primary.withOpacity(0.5)),
           boxShadow: [
@@ -1884,9 +1941,9 @@ class _MemoryTabState extends State<MemoryTab> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: AppColors.getSurface(context),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withOpacity(0.08)),
+          border: Border.all(color: AppColors.getBorderLight(context)),
         ),
         child: Row(
           children: [
@@ -1905,6 +1962,18 @@ class _MemoryTabState extends State<MemoryTab> {
                         media.fileUrl!,
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) =>
+                            Icon(icon, size: 28, color: iconColor),
+                      ),
+                    )
+                  : isPhoto &&
+                        media.localBytes != null &&
+                        media.localBytes!.isNotEmpty
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.memory(
+                        Uint8List.fromList(media.localBytes!),
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) =>
                             Icon(icon, size: 28, color: iconColor),
                       ),
                     )
@@ -1998,10 +2067,10 @@ class _MemoryTabState extends State<MemoryTab> {
             PopupMenuButton<String>(
               icon: Icon(
                 Icons.more_vert,
-                color: AppColors.textDimmed,
+                color: AppColors.getTextMuted(context),
                 size: 20,
               ),
-              color: AppColors.surface,
+              color: AppColors.getSurface(context),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -2137,6 +2206,54 @@ class _MemoryTabState extends State<MemoryTab> {
     );
   }
 
+  /// Show photo viewer for local bytes (photos not yet uploaded)
+  void _showLocalPhotoViewer(List<int> imageBytes) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(16),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Photo from bytes
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Image.memory(
+                Uint8List.fromList(imageBytes),
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  width: 200,
+                  height: 200,
+                  color: AppColors.surface,
+                  child: const Center(
+                    child: Icon(Icons.error, color: Colors.red, size: 48),
+                  ),
+                ),
+              ),
+            ),
+            // Close button
+            Positioned(
+              top: 8,
+              right: 8,
+              child: GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.7),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.close, color: Colors.white, size: 24),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _deleteRecordedMemory(int index) {
     showDialog(
       context: context,
@@ -2227,9 +2344,11 @@ class _MemoryTabState extends State<MemoryTab> {
               height: 12,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isActive ? Colors.black : AppColors.surface,
+                color: isActive ? Colors.black : AppColors.getSurface(context),
                 border: Border.all(
-                  color: isActive ? AppColors.primary : Colors.grey.shade600,
+                  color: isActive
+                      ? AppColors.primary
+                      : AppColors.getTextMuted(context),
                   width: 2,
                 ),
                 boxShadow: isActive
@@ -2263,7 +2382,10 @@ class _MemoryTabState extends State<MemoryTab> {
               left: 5,
               top: 0,
               bottom: 0,
-              child: Container(width: 1, color: Colors.grey.shade800),
+              child: Container(
+                width: 1,
+                color: AppColors.getBorderLight(context),
+              ),
             ),
             // Content
             Padding(
@@ -2293,9 +2415,9 @@ class _MemoryTabState extends State<MemoryTab> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.getSurface(context),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: AppColors.getBorderLight(context)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2310,9 +2432,11 @@ class _MemoryTabState extends State<MemoryTab> {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade900,
+                      color: AppColors.getInputBackground(context),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.grey.shade800),
+                      border: Border.all(
+                        color: AppColors.getBorderLight(context),
+                      ),
                     ),
                     child: Icon(icon, size: 24, color: iconColor),
                   ),
@@ -2337,7 +2461,7 @@ class _MemoryTabState extends State<MemoryTab> {
                             height: 4,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Colors.grey.shade600,
+                              color: AppColors.getTextMuted(context),
                             ),
                           ),
                           Text(
@@ -2369,9 +2493,11 @@ class _MemoryTabState extends State<MemoryTab> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade900,
+                    color: AppColors.getInputBackground(context),
                     borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: Colors.grey.shade800),
+                    border: Border.all(
+                      color: AppColors.getBorderLight(context),
+                    ),
                   ),
                   child: Text(
                     duration,
@@ -2384,8 +2510,11 @@ class _MemoryTabState extends State<MemoryTab> {
                 )
               else
                 PopupMenuButton<String>(
-                  icon: Icon(Icons.more_horiz, color: AppColors.textMuted),
-                  color: AppColors.surface,
+                  icon: Icon(
+                    Icons.more_horiz,
+                    color: AppColors.getTextMuted(context),
+                  ),
+                  color: AppColors.getSurface(context),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -2592,9 +2721,9 @@ class _MemoryTabState extends State<MemoryTab> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.getSurface(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: AppColors.getBorderLight(context)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2677,9 +2806,9 @@ class _MemoryTabState extends State<MemoryTab> {
   Widget _buildImageMemoryCard() {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.getSurface(context),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: AppColors.getBorderLight(context)),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -2795,9 +2924,9 @@ class _MemoryTabState extends State<MemoryTab> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.getSurface(context),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: AppColors.getBorderLight(context)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2811,9 +2940,11 @@ class _MemoryTabState extends State<MemoryTab> {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade900,
+                      color: AppColors.getInputBackground(context),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey.shade800),
+                      border: Border.all(
+                        color: AppColors.getBorderLight(context),
+                      ),
                     ),
                     child: Icon(
                       Icons.fitness_center,
@@ -2909,21 +3040,24 @@ class _MemoryTabState extends State<MemoryTab> {
   }
 
   Widget _buildFloatingAIButton() {
-    return Container(
-      width: 56,
-      height: 56,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: AppColors.primary,
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withOpacity(0.3),
-            blurRadius: 20,
-            spreadRadius: 2,
-          ),
-        ],
+    return GestureDetector(
+      onTap: _showSearchModal,
+      child: Container(
+        width: 56,
+        height: 56,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: AppColors.primary,
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withOpacity(0.3),
+              blurRadius: 20,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+        child: const Icon(Icons.smart_toy, size: 28, color: Colors.black),
       ),
-      child: const Icon(Icons.smart_toy, size: 28, color: Colors.black),
     );
   }
 
@@ -3172,9 +3306,9 @@ class _AudioPlayerCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.getSurface(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: AppColors.getBorderLight(context)),
       ),
       child: Column(
         children: [
@@ -3252,7 +3386,7 @@ class _AudioPlayerCard extends StatelessWidget {
                             decoration: BoxDecoration(
                               color: isActive
                                   ? AppColors.primary
-                                  : Colors.grey.shade600,
+                                  : AppColors.getTextMuted(context),
                               borderRadius: BorderRadius.circular(2),
                             ),
                           );

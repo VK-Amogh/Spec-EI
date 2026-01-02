@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:async';
 import 'package:google_fonts/google_fonts.dart';
 import '../core/app_colors.dart';
 import '../widgets/custom_text_field.dart';
@@ -30,6 +31,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   final _confirmPasswordController = TextEditingController();
   final _authService = AuthService();
   final _supabaseService = SupabaseService();
+  Timer? _emailDebounce;
 
   bool _isLoading = false;
   bool _obscurePassword = true;
@@ -84,6 +86,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
   @override
   void dispose() {
+    _emailDebounce?.cancel();
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
@@ -114,42 +117,55 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         rawEmail.length > 11 &&
         isValidFormat;
 
-    // Reset email exists state when typing
-    if (_emailAlreadyExists) {
-      setState(() => _emailAlreadyExists = false);
-    }
-
     setState(() {
       _emailError = error;
-      _showVerifyEmailButton =
-          isValidGmail && !_isEmailVerified && !_emailAlreadyExists;
+      // Don't show verify button yet - wait for check
+      _showVerifyEmailButton = false;
+
+      if (!isValidGmail) {
+        _emailAlreadyExists = false;
+        _isCheckingEmail = false;
+        _emailDebounce?.cancel();
+      } else {
+        // Valid format - Start checking
+        _isCheckingEmail = true; // Show loading state immediately
+        _emailAlreadyExists = false; // Reset temporary
+      }
     });
 
-    // Check if email exists when valid
     if (isValidGmail && !_isEmailVerified) {
-      _checkEmailExists(rawEmail);
+      _emailDebounce?.cancel();
+      _emailDebounce = Timer(const Duration(milliseconds: 300), () {
+        _checkEmailExists(rawEmail);
+      });
     }
   }
 
   Future<void> _checkEmailExists(String email) async {
-    if (_isCheckingEmail) return;
-
-    setState(() => _isCheckingEmail = true);
-
     try {
-      final exists = await _supabaseService.emailExists(email);
+      // Check both Firebase and Supabase
+      final firebaseExists = await _authService.checkEmailExistsInFirebase(
+        email,
+      );
+      final supabaseExists = await _supabaseService.emailExists(email);
+
+      final exists = firebaseExists || supabaseExists;
+
       if (mounted && _emailController.text.toLowerCase().trim() == email) {
         setState(() {
           _emailAlreadyExists = exists;
+          print(
+            'DEBUG: Email check for $email -> exists: $exists',
+          ); // Debug log
+          if (exists) {
+            _emailError = 'Account already exists. Please login.';
+          }
           _showVerifyEmailButton = !exists && !_isEmailVerified;
+          _isCheckingEmail = false;
         });
       }
     } catch (e) {
-      // Silently fail - don't block registration
-    } finally {
-      if (mounted) {
-        setState(() => _isCheckingEmail = false);
-      }
+      if (mounted) setState(() => _isCheckingEmail = false);
     }
   }
 
@@ -394,6 +410,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       const SizedBox(height: 32),
                       GlassPanel(
                         padding: const EdgeInsets.all(32),
+                        enableGlow: false,
                         child: Form(
                           key: _formKey,
                           child: Column(
@@ -499,7 +516,19 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         size: 20,
                       ),
                     )
-                  : null,
+                  : (_isCheckingEmail
+                        ? const Padding(
+                            padding: EdgeInsets.only(right: 12),
+                            child: SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          )
+                        : null),
               validator: (value) {
                 if (value == null || value.isEmpty) {
                   return 'Please enter your email';
@@ -523,32 +552,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         if (_showVerifyEmailButton) ...[
           const SizedBox(height: 8),
           _buildVerifyButton(label: 'Verify Email', onPressed: _verifyEmail),
-        ],
-        if (_emailAlreadyExists) ...[
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.orange.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.orange.withOpacity(0.3)),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.warning_amber, color: Colors.orange, size: 16),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'An account with this email already exists. Please login instead.',
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      color: Colors.orange,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
         ],
       ],
     );

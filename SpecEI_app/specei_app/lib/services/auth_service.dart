@@ -1,3 +1,4 @@
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -30,6 +31,23 @@ class AuthService {
   /// Auth state stream
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
+  /// Check if email exists in Firebase Authentication
+  /// Returns true if the email is already registered, false otherwise
+  Future<bool> checkEmailExistsInFirebase(String email) async {
+    try {
+      final methods = await _auth.fetchSignInMethodsForEmail(email.trim());
+      debugPrint(
+        'Email check for $email: ${methods.isNotEmpty ? "EXISTS" : "NOT FOUND"}',
+      );
+      return methods.isNotEmpty;
+    } catch (e) {
+      debugPrint('Error checking email existence: $e');
+      // If there's an error, we return false to allow the flow to continue
+      // The actual signup will catch any real issues
+      return false;
+    }
+  }
+
   /// Sign in with email and password
   Future<UserCredential> signInWithEmail(String email, String password) async {
     try {
@@ -56,17 +74,29 @@ class AuthService {
 
   /// Sign in with Google
   Future<UserCredential?> signInWithGoogle() async {
-    // Check if running on desktop - Google Sign-In not supported
-    if (_isDesktopPlatform) {
+    // Check if running on desktop (native) - Google Sign-In not supported there
+    // But allow if it is Web!
+    if (!kIsWeb && _isDesktopPlatform) {
       throw 'Google Sign-In is not available on desktop. Please use email/password login, or run the app on Android/iOS.';
     }
 
-    if (_googleSignIn == null) {
+    if (!kIsWeb && _googleSignIn == null) {
       throw 'Google Sign-In is not available on this platform.';
     }
 
     try {
+      if (kIsWeb) {
+        // Web-specific Google Sign-In flow via Firebase Auth directly (simplest)
+        // Or using google_sign_in package which supports web.
+        // The package is initialized.
+        // On Web, signIn() should work.
+        if (_googleSignIn == null) {
+          _googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
+        }
+      }
+
       debugPrint('Starting Google Sign-In...');
+      // Ensure specific sign in flow for web if needed, but standard should work
       final GoogleSignInAccount? googleUser = await _googleSignIn!.signIn();
 
       if (googleUser == null) {
@@ -92,11 +122,28 @@ class AuthService {
     }
   }
 
+  /// Sign in with Apple
+  Future<UserCredential> signInWithApple() async {
+    try {
+      if (kIsWeb) {
+        final provider = OAuthProvider('apple.com');
+        provider.addScope('email');
+        provider.addScope('name');
+        return await _auth.signInWithPopup(provider);
+      } else {
+        // Native Apple Sign-In requires sign_in_with_apple package
+        throw 'Apple Sign-In is currently only supported on Web in this version.';
+      }
+    } on FirebaseAuthException catch (e) {
+      throw _handleAuthException(e);
+    }
+  }
+
   /// Send password reset email
   Future<void> sendPasswordResetEmail(String email) async {
     try {
-      // 1. Check if email exists in our database
-      final exists = await _supabaseService.emailExists(email);
+      // 1. Check if email exists in Firebase
+      final exists = await checkEmailExistsInFirebase(email);
       if (!exists) {
         debugPrint(
           'Mock OTP: No account found for $email, simulating success.',
@@ -172,6 +219,61 @@ class AuthService {
       debugPrint('Error in sendPasswordResetPhone: $e');
       // Always rethrow unexpected errors, but we handled user-not-found above
       rethrow;
+    }
+  }
+
+  /// Confirm password reset with Firebase code (from email link)
+  /// This is for the standard Firebase password reset flow
+  Future<void> confirmPasswordReset(String code, String newPassword) async {
+    try {
+      await _auth.confirmPasswordReset(code: code, newPassword: newPassword);
+      debugPrint('Password reset confirmed successfully');
+    } on FirebaseAuthException catch (e) {
+      throw _handleAuthException(e);
+    }
+  }
+
+  /// Reset password using identifier (email) and new password
+  /// This attempts to use a Cloud Function to update the password directly.
+  /// If the Cloud Function is not available, it falls back to Firebase's email reset flow.
+  Future<void> resetPasswordWithEmail(String email, String newPassword) async {
+    try {
+      // First, try using the Cloud Function (if deployed)
+      try {
+        final callable = FirebaseFunctions.instance.httpsCallable(
+          'resetPassword',
+        );
+        final result = await callable.call<Map<String, dynamic>>({
+          'email': email.trim(),
+          'newPassword': newPassword,
+        });
+
+        final data = result.data;
+        if (data['success'] == true) {
+          debugPrint(
+            'Password successfully updated for $email via Cloud Function',
+          );
+          return; // Success! Exit early
+        }
+      } catch (cloudError) {
+        debugPrint('Cloud Function not available or failed: $cloudError');
+        // Fall through to alternative method
+      }
+
+      // Fallback: Use Firebase's sendPasswordResetEmail
+      // This sends an email to the user with a link to reset their password
+      // Note: The user will need to click the link in the email to complete the reset
+      await _auth.sendPasswordResetEmail(email: email.trim());
+
+      debugPrint('Password reset email sent to $email');
+      debugPrint(
+        'Note: User must click the link in the email to complete password reset',
+      );
+
+      // Throw a user-friendly message explaining what happened
+      throw 'A password reset link has been sent to your email. Please check your inbox and click the link to complete the password reset.';
+    } on FirebaseAuthException catch (e) {
+      throw _handleAuthException(e);
     }
   }
 

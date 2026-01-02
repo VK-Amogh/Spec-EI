@@ -157,6 +157,12 @@ class _CustomTextFieldState extends State<CustomTextField> {
                   borderRadius: BorderRadius.circular(12),
                   borderSide: const BorderSide(color: Colors.red, width: 1),
                 ),
+                errorText: widget.errorText,
+                errorStyle: GoogleFonts.inter(
+                  color: Colors.redAccent,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
           ),

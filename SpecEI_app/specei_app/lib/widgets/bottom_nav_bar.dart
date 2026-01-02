@@ -26,12 +26,12 @@ class BottomNavBar extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       height: 64,
       decoration: BoxDecoration(
-        color: const Color(0xFF111111).withOpacity(0.9),
+        color: AppColors.getSurface(context).withOpacity(0.9),
         borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: AppColors.getBorderLight(context)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.4),
+            color: Colors.black.withOpacity(0.1),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -45,21 +45,29 @@ class BottomNavBar extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               // Home
-              _buildNavItem(icon: Icons.home_rounded, label: 'Home', index: 0),
+              _buildNavItem(
+                context: context,
+                icon: Icons.home_rounded,
+                label: 'Home',
+                index: 0,
+              ),
               // Memory
               _buildNavItem(
+                context: context,
                 icon: Icons.psychology_rounded,
                 label: 'Memory',
                 index: 1,
               ),
               // Camera
               _buildNavItem(
+                context: context,
                 icon: Icons.videocam_rounded,
                 label: 'Camera',
                 index: 2,
               ),
               // Settings
               _buildNavItem(
+                context: context,
                 icon: Icons.settings_rounded,
                 label: 'Settings',
                 index: 3,
@@ -106,9 +114,9 @@ class BottomNavBar extends StatelessWidget {
       builder: (context) => Container(
         margin: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFF1A1A1A),
+          color: AppColors.getSurface(context),
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white.withOpacity(0.1)),
+          border: Border.all(color: AppColors.getBorderLight(context)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -125,12 +133,12 @@ class BottomNavBar extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             // Title
-            const Text(
+            Text(
               'Capture',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: AppColors.getTextPrimary(context),
               ),
             ),
             const SizedBox(height: 24),
@@ -208,10 +216,10 @@ class BottomNavBar extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: Colors.white,
+              color: AppColors.getTextPrimary(context),
             ),
           ),
         ],
@@ -220,6 +228,7 @@ class BottomNavBar extends StatelessWidget {
   }
 
   Widget _buildNavItem({
+    required BuildContext context,
     required IconData icon,
     required String label,
     required int index,
@@ -238,7 +247,7 @@ class BottomNavBar extends StatelessWidget {
         child: Icon(
           icon,
           size: 26,
-          color: isActive ? AppColors.primary : Colors.grey.shade600,
+          color: isActive ? AppColors.primary : AppColors.getTextMuted(context),
         ),
       ),
     );

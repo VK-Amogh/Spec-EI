@@ -216,7 +216,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                 style: GoogleFonts.spaceGrotesk(
                   fontSize: 40,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
+                  color: AppColors.getTextPrimary(context),
                   letterSpacing: -1,
                   shadows: [
                     Shadow(color: AppColors.primaryGlow, blurRadius: 30),
@@ -242,9 +242,9 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.getSurface(context),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        border: Border.all(color: AppColors.getBorderLight(context)),
         boxShadow: [
           BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 20),
         ],
@@ -260,7 +260,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
             style: GoogleFonts.inter(
               fontSize: 12,
               fontWeight: FontWeight.w500,
-              color: AppColors.textSecondary,
+              color: AppColors.getTextSecondary(context),
             ),
           ),
           _buildDivider(),
@@ -274,7 +274,10 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
           const SizedBox(width: 6),
           Text(
             'Syncing...',
-            style: GoogleFonts.inter(fontSize: 12, color: AppColors.textMuted),
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              color: AppColors.getTextMuted(context),
+            ),
           ),
         ],
       ),
@@ -286,7 +289,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
       margin: const EdgeInsets.symmetric(horizontal: 12),
       width: 1,
       height: 12,
-      color: Colors.grey.shade700,
+      color: AppColors.getBorderLight(context),
     );
   }
 
@@ -296,7 +299,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
     IconData batteryIcon;
 
     if (_batteryLevel < 0) {
-      batteryColor = AppColors.textMuted;
+      batteryColor = AppColors.getTextMuted(context);
       batteryIcon = Icons.battery_unknown;
     } else if (_batteryLevel < 20) {
       batteryColor = Colors.red;
@@ -501,7 +504,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                 style: GoogleFonts.inter(
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textMuted,
+                  color: AppColors.getTextMuted(context),
                   letterSpacing: 1.5,
                 ),
               ),
@@ -509,9 +512,9 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                 icon: Icon(
                   Icons.more_horiz,
                   size: 16,
-                  color: AppColors.textDimmed,
+                  color: AppColors.getTextMuted(context),
                 ),
-                color: AppColors.surface,
+                color: AppColors.getSurface(context),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -603,16 +606,16 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                 width: double.infinity,
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0F0F0F),
+                  color: AppColors.getSurface(context),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white.withOpacity(0.08)),
+                  border: Border.all(color: AppColors.getBorderLight(context)),
                 ),
                 child: Column(
                   children: [
                     Icon(
                       Icons.check_circle_outline,
                       size: 48,
-                      color: AppColors.textDimmed,
+                      color: AppColors.getTextMuted(context),
                     ),
                     const SizedBox(height: 12),
                     Text(
@@ -620,7 +623,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                       style: GoogleFonts.inter(
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
-                        color: AppColors.textMuted,
+                        color: AppColors.getTextMuted(context),
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -628,7 +631,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                       'Tap ⋯ above to add notes, reminders, or start focus mode',
                       style: GoogleFonts.inter(
                         fontSize: 12,
-                        color: AppColors.textDimmed,
+                        color: AppColors.getTextMuted(context),
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -714,13 +717,13 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
       width: 156,
       height: 120,
       decoration: BoxDecoration(
-        color: const Color(0xFF0F0F0F),
+        color: AppColors.getSurface(context),
         borderRadius: BorderRadius.circular(20),
         // Light edge glow
         border: Border.all(
           color: showAccent
               ? AppColors.primary.withOpacity(0.4)
-              : Colors.white.withOpacity(0.08),
+              : AppColors.getBorderLight(context),
           width: showAccent ? 1.5 : 1,
         ),
         boxShadow: [
@@ -781,7 +784,8 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                           style: GoogleFonts.inter(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
-                            color: labelColor ?? AppColors.textMuted,
+                            color:
+                                labelColor ?? AppColors.getTextMuted(context),
                           ),
                         ),
                       ),
@@ -792,12 +796,12 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                         child: PopupMenuButton<String>(
                           icon: Icon(
                             Icons.more_vert,
-                            color: AppColors.textDimmed,
+                            color: AppColors.getTextMuted(context),
                             size: 16,
                           ),
                           padding: EdgeInsets.zero,
                           iconSize: 16,
-                          color: AppColors.surface,
+                          color: AppColors.getSurface(context),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -810,13 +814,13 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                                   title: Text(
                                     'Delete ${type == 'reminder' ? 'Reminder' : 'Note'}?',
                                     style: GoogleFonts.inter(
-                                      color: AppColors.textPrimary,
+                                      color: AppColors.getTextPrimary(context),
                                     ),
                                   ),
                                   content: Text(
                                     'This action cannot be undone.',
                                     style: GoogleFonts.inter(
-                                      color: AppColors.textMuted,
+                                      color: AppColors.getTextMuted(context),
                                     ),
                                   ),
                                   actions: [
@@ -877,7 +881,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                   title,
                   style: GoogleFonts.inter(
                     fontSize: 11,
-                    color: AppColors.textMuted,
+                    color: AppColors.getTextMuted(context),
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -886,7 +890,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                   style: GoogleFonts.inter(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                    color: AppColors.getTextPrimary(context),
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -975,12 +979,12 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
           decoration: BoxDecoration(
-            color: const Color(0xFF0D0D0D),
+            color: AppColors.getInputBackground(context),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
               color: showDot
                   ? AppColors.primary.withOpacity(0.3)
-                  : Colors.white.withOpacity(0.08),
+                  : AppColors.getBorderLight(context),
               width: 1,
             ),
             boxShadow: showDot
@@ -1020,8 +1024,8 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
                   color: showDot
-                      ? AppColors.textPrimary
-                      : AppColors.textSecondary,
+                      ? AppColors.getTextPrimary(context)
+                      : AppColors.getTextSecondary(context),
                 ),
               ),
             ],
@@ -1036,10 +1040,10 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
       padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
         // Dark glass background
-        color: const Color(0xFF0D0D0D),
+        color: AppColors.getInputBackground(context),
         borderRadius: BorderRadius.circular(50),
         // Light edge glow effect
-        border: Border.all(color: Colors.white.withOpacity(0.12), width: 1),
+        border: Border.all(color: AppColors.getBorderLight(context), width: 1),
         boxShadow: [
           // Inner subtle glow
           BoxShadow(
@@ -1063,10 +1067,10 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: const Color(0xFF1A1A1A),
+                color: AppColors.getSurface(context),
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.08),
+                  color: AppColors.getBorderLight(context),
                   width: 1,
                 ),
               ),
@@ -1076,7 +1080,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                 size: 22,
               ),
             ),
-            color: AppColors.surface,
+            color: AppColors.getSurface(context),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
@@ -1123,7 +1127,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                     Text(
                       'Files',
                       style: GoogleFonts.inter(
-                        color: AppColors.textPrimary,
+                        color: AppColors.getTextPrimary(context),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -1150,7 +1154,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                     Text(
                       'Camera',
                       style: GoogleFonts.inter(
-                        color: AppColors.textPrimary,
+                        color: AppColors.getTextPrimary(context),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -1188,13 +1192,13 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
               style: GoogleFonts.inter(
                 // keep style
                 fontSize: 15,
-                color: AppColors.textPrimary,
+                color: AppColors.getTextPrimary(context),
               ),
               decoration: InputDecoration(
                 hintText: 'Ask anything or paste content...',
                 hintStyle: GoogleFonts.inter(
                   fontSize: 15,
-                  color: AppColors.textMuted.withOpacity(0.5),
+                  color: AppColors.getTextMuted(context).withOpacity(0.5),
                 ),
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,
@@ -1315,12 +1319,12 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
               decoration: BoxDecoration(
                 color: _isRecording
                     ? Colors.red.withOpacity(0.1)
-                    : AppColors.surface,
+                    : AppColors.getSurface(context),
                 shape: BoxShape.circle,
                 border: Border.all(
                   color: _isRecording
                       ? Colors.red
-                      : Colors.white.withOpacity(0.1),
+                      : AppColors.getBorderLight(context),
                 ),
               ),
               child: _isRecording

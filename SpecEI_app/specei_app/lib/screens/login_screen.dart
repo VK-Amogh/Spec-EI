@@ -31,7 +31,6 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   String? _errorMessage;
   String? _emailValidationError;
-  bool? _accountExists;
 
   @override
   void initState() {
@@ -52,7 +51,6 @@ class _LoginScreenState extends State<LoginScreen> {
     if (email.isEmpty) {
       setState(() {
         _emailValidationError = null;
-        _accountExists = null;
       });
       return;
     }
@@ -71,27 +69,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() {
       _emailValidationError = error;
-      if (error != null) _accountExists = null;
+      // Note: Account existence check removed - Firebase deprecated fetchSignInMethodsForEmail
+      // for security reasons (prevents email enumeration attacks)
+      // The actual login will determine if account exists
     });
-
-    // If valid, check if it exists in DB
-    if (error == null) {
-      _checkAccountExistence(email);
-    }
   }
 
-  Future<void> _checkAccountExistence(String email) async {
-    try {
-      final exists = await _supabaseService.emailExists(email);
-      if (mounted && _emailController.text.trim() == email) {
-        setState(() {
-          _accountExists = exists;
-        });
-      }
-    } catch (e) {
-      debugPrint('Error checking account existence: $e');
-    }
-  }
+  // Note: Account existence check removed - Firebase deprecated fetchSignInMethodsForEmail
+  // The login attempt itself will determine if the account exists
 
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
@@ -169,6 +154,48 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _handleAppleSignIn() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final result = await _authService.signInWithApple();
+      // Note: signInWithApple returns UserCredential, not nullable
+      if (result.user != null) {
+        // Check if profile exists
+        final exists = await _supabaseService.userProfileExists(
+          result.user!.uid,
+        );
+        if (!exists) {
+          await _supabaseService.createUserProfile(
+            firebaseUid: result.user!.uid,
+            email: result.user!.email ?? '',
+            fullName: result.user!.displayName ?? 'User',
+          );
+        }
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Login successful!'),
+              backgroundColor: AppColors.primaryDark,
+            ),
+          );
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const MainScreen()),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _errorMessage = e.toString());
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -237,26 +264,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       return _emailValidationError;
                                     },
                                   ),
-                                  if (_accountExists != null &&
-                                      _emailValidationError == null)
-                                    Padding(
-                                      padding: const EdgeInsets.only(
-                                        top: 6,
-                                        left: 4,
-                                      ),
-                                      child: Text(
-                                        _accountExists!
-                                            ? '✓ Account found'
-                                            : 'No account found with this email',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: _accountExists!
-                                              ? Colors.greenAccent
-                                              : Colors.redAccent,
-                                        ),
-                                      ),
-                                    ),
+                                  // Account existence check removed - Firebase deprecated this API
                                 ],
                               ),
                               const SizedBox(height: 20),
@@ -508,10 +516,8 @@ class _LoginScreenState extends State<LoginScreen> {
         Expanded(
           child: SocialAuthButton.apple(
             onPressed: () {
-              // Apple sign in - can be implemented with sign_in_with_apple package
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Apple Sign In coming soon')),
-              );
+              // Apple sign in - now implemented for Web
+              _handleAppleSignIn();
             },
           ),
         ),

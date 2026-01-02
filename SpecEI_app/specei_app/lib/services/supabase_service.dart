@@ -75,12 +75,13 @@ class SupabaseService {
   /// Check if email already exists in the database
   Future<bool> emailExists(String email) async {
     try {
-      final response = await _client
-          .from('users')
-          .select('id')
-          .eq('email', email.toLowerCase().trim())
-          .maybeSingle();
-      return response != null;
+      final response = await _client.rpc(
+        'check_email_exists',
+        params: {
+          'email_to_check': email.trim().toLowerCase(),
+        }, // Ensure strict lowercase to match typical norms
+      );
+      return response as bool;
     } catch (e) {
       return false;
     }
@@ -497,6 +498,7 @@ class SupabaseService {
   }
 
   /// Get all media for a user
+  /// Throws on error to distinguish from empty results
   Future<List<Map<String, dynamic>>> getMedia(String firebaseUid) async {
     try {
       final response = await _client
@@ -507,7 +509,7 @@ class SupabaseService {
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
       print('Failed to get media: $e');
-      return [];
+      rethrow; // Rethrow so caller knows fetch failed vs empty
     }
   }
 
@@ -582,6 +584,10 @@ class SupabaseService {
     int? durationSeconds,
   }) async {
     try {
+      print('📤 Starting media upload: $fileName (${fileBytes.length} bytes)');
+      print('   User ID: $firebaseUid');
+      print('   Type: $mediaType, MIME: $mimeType');
+
       // Upload file first
       final fileUrl = await uploadMediaFile(
         userId: firebaseUid,
@@ -591,10 +597,14 @@ class SupabaseService {
       );
 
       if (fileUrl == null) {
+        print('❌ File upload failed - fileUrl is null');
         throw Exception('File upload failed');
       }
 
+      print('✅ File uploaded successfully: $fileUrl');
+
       // Save metadata to database
+      print('💾 Saving metadata to database...');
       final response = await _client
           .from('media')
           .insert({
@@ -611,9 +621,10 @@ class SupabaseService {
           .select()
           .single();
 
+      print('✅ Media saved to database! ID: ${response['id']}');
       return response;
     } catch (e) {
-      print('Failed to save media with file: $e');
+      print('❌ Failed to save media with file: $e');
       return null;
     }
   }
@@ -669,6 +680,184 @@ class SupabaseService {
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
       print('Failed to search media: $e');
+      return [];
+    }
+  }
+
+  // ==================== MEMORY METADATA ====================
+
+  /// Save transcript for a media item
+  Future<Map<String, dynamic>?> saveTranscript({
+    required String mediaId,
+    required String fullText,
+    String language = 'en',
+    double? confidence,
+  }) async {
+    try {
+      final response = await _client
+          .from('transcripts')
+          .insert({
+            'media_id': mediaId,
+            'full_text': fullText,
+            'language': language,
+            'confidence': confidence,
+            'word_count': fullText.split(' ').length,
+          })
+          .select()
+          .single();
+      print('✅ Transcript saved for media $mediaId');
+      return response;
+    } catch (e) {
+      print('Failed to save transcript: $e');
+      return null;
+    }
+  }
+
+  /// Get transcript for a media item
+  Future<Map<String, dynamic>?> getTranscript(String mediaId) async {
+    try {
+      final response = await _client
+          .from('transcripts')
+          .select()
+          .eq('media_id', mediaId)
+          .maybeSingle();
+      return response;
+    } catch (e) {
+      print('Failed to get transcript: $e');
+      return null;
+    }
+  }
+
+  /// Save detected object for a media item
+  Future<Map<String, dynamic>?> saveDetectedObject({
+    required String mediaId,
+    required String
+    objectType, // 'person', 'object', 'text', 'place', 'animal', 'brand', 'activity'
+    required String label,
+    double? confidence,
+    double? timestampSeconds,
+    Map<String, dynamic>? boundingBox,
+    Map<String, dynamic>? metadata,
+  }) async {
+    try {
+      final response = await _client
+          .from('detected_objects')
+          .insert({
+            'media_id': mediaId,
+            'object_type': objectType,
+            'label': label,
+            'confidence': confidence,
+            'timestamp_seconds': timestampSeconds,
+            'bounding_box': boundingBox,
+            'metadata': metadata,
+          })
+          .select()
+          .single();
+      return response;
+    } catch (e) {
+      print('Failed to save detected object: $e');
+      return null;
+    }
+  }
+
+  /// Get all detected objects for a media item
+  Future<List<Map<String, dynamic>>> getDetectedObjects(String mediaId) async {
+    try {
+      final response = await _client
+          .from('detected_objects')
+          .select()
+          .eq('media_id', mediaId)
+          .order('timestamp_seconds', ascending: true);
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      print('Failed to get detected objects: $e');
+      return [];
+    }
+  }
+
+  /// Semantic search across all memory metadata
+  /// Searches ai_description, transcripts, and detected objects
+  Future<List<Map<String, dynamic>>> searchMemory(
+    String firebaseUid,
+    String query,
+  ) async {
+    try {
+      // Try using the RPC function first (if schema is applied)
+      final response = await _client.rpc(
+        'search_memory',
+        params: {'p_user_id': firebaseUid, 'p_query': query},
+      );
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      print('RPC search_memory failed (schema may not be applied): $e');
+      // Fallback to basic search
+      return searchMediaByDescription(firebaseUid, query);
+    }
+  }
+
+  /// Create an event from analyzed media
+  Future<Map<String, dynamic>?> createEvent({
+    required String userId,
+    required String title,
+    String? summary,
+    required DateTime startTime,
+    DateTime? endTime,
+    String eventType = 'memory',
+    int importance = 5,
+    String? location,
+    List<String>? tags,
+  }) async {
+    try {
+      final response = await _client
+          .from('events')
+          .insert({
+            'user_id': userId,
+            'title': title,
+            'summary': summary,
+            'start_time': startTime.toIso8601String(),
+            'end_time': endTime?.toIso8601String(),
+            'event_type': eventType,
+            'importance': importance,
+            'location': location,
+            'tags': tags,
+          })
+          .select()
+          .single();
+      return response;
+    } catch (e) {
+      print('Failed to create event: $e');
+      return null;
+    }
+  }
+
+  /// Link media to an event
+  Future<void> linkMediaToEvent(
+    String eventId,
+    String mediaId, {
+    String role = 'primary',
+  }) async {
+    try {
+      await _client.from('event_media').insert({
+        'event_id': eventId,
+        'media_id': mediaId,
+        'role': role,
+      });
+    } catch (e) {
+      print('Failed to link media to event: $e');
+    }
+  }
+
+  /// Get events for a user
+  Future<List<Map<String, dynamic>>> getEvents(String userId) async {
+    try {
+      final response = await _client
+          .from('events')
+          .select()
+          .eq('user_id', userId)
+          .order('start_time', ascending: false);
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      print('Failed to get events: $e');
       return [];
     }
   }

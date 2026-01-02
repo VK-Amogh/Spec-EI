@@ -5,6 +5,7 @@ import 'dart:async';
 import '../../core/app_colors.dart';
 import '../../services/auth_service.dart';
 import '../login_screen.dart';
+import '../about_screen.dart';
 
 /// Settings Tab - User account and app settings
 class SettingsTab extends StatefulWidget {
@@ -491,7 +492,7 @@ class _SettingsTabState extends State<SettingsTab> {
         Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: () {},
+            onTap: () => _handleSettingTap(label),
             borderRadius: BorderRadius.vertical(
               top: isLast ? Radius.zero : const Radius.circular(16),
               bottom: isLast ? const Radius.circular(16) : Radius.zero,
@@ -537,6 +538,29 @@ class _SettingsTabState extends State<SettingsTab> {
           ),
       ],
     );
+  }
+
+  /// Handle navigation when a setting is tapped
+  void _handleSettingTap(String label) {
+    switch (label) {
+      case 'About':
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AboutScreen()),
+        );
+        break;
+      // Add more cases for other settings as needed
+      default:
+        // Show coming soon for unimplemented settings
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$label coming soon'),
+            backgroundColor: AppColors.surface,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 1),
+          ),
+        );
+    }
   }
 
   Widget _buildLogoutButton() {

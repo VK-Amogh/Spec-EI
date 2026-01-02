@@ -30,7 +30,6 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
   final _supabaseService = SupabaseService();
   final _permissionService = PermissionStateService();
   late AnimationController _pulseController;
-  bool _recordingMode = true;
   bool _isLoggingOut = false;
   int _selectedSection = 0; // 0 = Device, 1 = Settings
 
@@ -154,7 +153,7 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
             style: GoogleFonts.inter(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
+              color: AppColors.getTextPrimary(context),
             ),
           ),
           const SizedBox(height: 16),
@@ -163,9 +162,9 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
           Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: AppColors.getSurface(context),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white.withOpacity(0.08)),
+              border: Border.all(color: AppColors.getBorderLight(context)),
             ),
             child: Row(
               children: [
@@ -197,7 +196,9 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
               Icon(
                 icon,
                 size: 18,
-                color: isActive ? Colors.black : AppColors.textMuted,
+                color: isActive
+                    ? Colors.black
+                    : AppColors.getTextMuted(context),
               ),
               const SizedBox(width: 8),
               Text(
@@ -205,7 +206,9 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: isActive ? Colors.black : AppColors.textMuted,
+                  color: isActive
+                      ? Colors.black
+                      : AppColors.getTextMuted(context),
                 ),
               ),
             ],
@@ -243,9 +246,9 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.getSurface(context),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: AppColors.getBorderLight(context)),
       ),
       child: Row(
         children: [
@@ -290,7 +293,7 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
                   style: GoogleFonts.inter(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
+                    color: AppColors.getTextPrimary(context),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -326,7 +329,7 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: AppColors.inputBackground,
+              color: AppColors.getInputBackground(context),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
@@ -346,7 +349,7 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
                   style: GoogleFonts.inter(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
-                    color: AppColors.textSecondary,
+                    color: AppColors.getTextSecondary(context),
                   ),
                 ),
               ],
@@ -366,7 +369,7 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
           style: GoogleFonts.inter(
             fontSize: 10,
             fontWeight: FontWeight.bold,
-            color: AppColors.textMuted,
+            color: AppColors.getTextMuted(context),
             letterSpacing: 1.5,
           ),
         ),
@@ -414,9 +417,9 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.getSurface(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: AppColors.getBorderLight(context)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -428,12 +431,15 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
             style: GoogleFonts.inter(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
+              color: AppColors.getTextPrimary(context),
             ),
           ),
           Text(
             label,
-            style: GoogleFonts.inter(fontSize: 10, color: AppColors.textMuted),
+            style: GoogleFonts.inter(
+              fontSize: 10,
+              color: AppColors.getTextMuted(context),
+            ),
           ),
         ],
       ),
@@ -444,9 +450,9 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.getSurface(context),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: AppColors.getBorderLight(context)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -462,22 +468,22 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
                     style: GoogleFonts.inter(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
+                      color: AppColors.getTextPrimary(context),
                     ),
                   ),
                   Text(
                     'Capture audio & video',
                     style: GoogleFonts.inter(
                       fontSize: 12,
-                      color: AppColors.textMuted,
+                      color: AppColors.getTextMuted(context),
                     ),
                   ),
                 ],
               ),
-              _buildSwitch(
-                _recordingMode,
-                (v) => setState(() => _recordingMode = v),
-              ),
+              _buildSwitch(_permissionService.isRecordingModeEnabled, (v) {
+                _permissionService.setRecordingModeEnabled(v);
+                setState(() {});
+              }),
             ],
           ),
           const SizedBox(height: 16),
@@ -485,10 +491,42 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
             spacing: 8,
             runSpacing: 8,
             children: [
-              _buildControlChip(Icons.schedule, 'Timed'),
-              _buildControlChip(Icons.crop_free, 'Privacy'),
-              _buildControlChip(Icons.surround_sound, 'Audio'),
-              _buildControlChip(Icons.visibility_off, 'Mask'),
+              _buildControlChip(
+                Icons.schedule,
+                'Timed',
+                isActive: _permissionService.isTimedRecordingEnabled,
+                onToggle: () {
+                  _permissionService.toggleTimedRecording();
+                  setState(() {});
+                },
+              ),
+              _buildControlChip(
+                Icons.crop_free,
+                'Privacy',
+                isActive: _permissionService.isPrivacyZonesEnabled,
+                onToggle: () {
+                  _permissionService.togglePrivacyZones();
+                  setState(() {});
+                },
+              ),
+              _buildControlChip(
+                Icons.surround_sound,
+                'Audio',
+                isActive: _permissionService.isSpatialAudioEnabled,
+                onToggle: () {
+                  _permissionService.toggleSpatialAudio();
+                  setState(() {});
+                },
+              ),
+              _buildControlChip(
+                Icons.visibility_off,
+                'Mask',
+                isActive: _permissionService.isAiMaskingEnabled,
+                onToggle: () {
+                  _permissionService.toggleAiMasking();
+                  setState(() {});
+                },
+              ),
             ],
           ),
         ],
@@ -504,7 +542,9 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
         width: 52,
         height: 28,
         decoration: BoxDecoration(
-          color: value ? AppColors.primary : AppColors.inputBackground,
+          color: value
+              ? AppColors.primary
+              : AppColors.getInputBackground(context),
           borderRadius: BorderRadius.circular(14),
         ),
         child: AnimatedAlign(
@@ -524,28 +564,51 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
     );
   }
 
-  Widget _buildControlChip(IconData icon, String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.inputBackground,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: AppColors.textMuted),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textSecondary,
-            ),
+  Widget _buildControlChip(
+    IconData icon,
+    String label, {
+    bool isActive = false,
+    VoidCallback? onToggle,
+  }) {
+    return GestureDetector(
+      onTap: onToggle,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isActive
+              ? AppColors.primary.withOpacity(0.15)
+              : AppColors.getInputBackground(context),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isActive
+                ? AppColors.primary.withOpacity(0.4)
+                : AppColors.getBorderLight(context),
           ),
-        ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 14,
+              color: isActive
+                  ? AppColors.primary
+                  : AppColors.getTextMuted(context),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: isActive
+                    ? AppColors.primary
+                    : AppColors.getTextSecondary(context),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -554,9 +617,9 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.getSurface(context),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: AppColors.getBorderLight(context)),
       ),
       child: Column(
         children: [
@@ -578,17 +641,6 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
             status: _permissionService.isCameraEnabled ? 'Active' : 'Off',
             isActive: _permissionService.isCameraEnabled,
             onToggle: _toggleCamera,
-          ),
-          const SizedBox(height: 12),
-          _buildInteractiveSensorRow(
-            icon: Icons.cloud_sync,
-            label: 'Cloud Sync',
-            status: _permissionService.isCloudSyncEnabled ? 'Active' : 'Off',
-            isActive: _permissionService.isCloudSyncEnabled,
-            onToggle: () {
-              _permissionService.toggleCloudSync();
-              setState(() {});
-            },
           ),
         ],
       ),
@@ -622,7 +674,7 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
           decoration: BoxDecoration(
             color: isActive
                 ? AppColors.primary.withOpacity(0.1)
-                : AppColors.inputBackground,
+                : AppColors.getInputBackground(context),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(
@@ -647,7 +699,9 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
                 status,
                 style: GoogleFonts.inter(
                   fontSize: 10,
-                  color: isActive ? AppColors.primary : AppColors.textMuted,
+                  color: isActive
+                      ? AppColors.primary
+                      : AppColors.getTextMuted(context),
                 ),
               ),
             ],
@@ -660,7 +714,9 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
             width: 44,
             height: 24,
             decoration: BoxDecoration(
-              color: isActive ? AppColors.primary : AppColors.inputBackground,
+              color: isActive
+                  ? AppColors.primary
+                  : AppColors.getInputBackground(context),
               borderRadius: BorderRadius.circular(12),
             ),
             child: AnimatedAlign(
@@ -698,7 +754,7 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
           decoration: BoxDecoration(
             color: isActive
                 ? AppColors.primary.withOpacity(0.1)
-                : AppColors.inputBackground,
+                : AppColors.getInputBackground(context),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(
@@ -723,7 +779,9 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
                 status,
                 style: GoogleFonts.inter(
                   fontSize: 10,
-                  color: isActive ? AppColors.primary : AppColors.textMuted,
+                  color: isActive
+                      ? AppColors.primary
+                      : AppColors.getTextMuted(context),
                 ),
               ),
             ],
@@ -733,7 +791,9 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
           width: 36,
           height: 20,
           decoration: BoxDecoration(
-            color: isActive ? AppColors.primary : AppColors.inputBackground,
+            color: isActive
+                ? AppColors.primary
+                : AppColors.getInputBackground(context),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Align(
@@ -825,7 +885,103 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
         _buildSettingsGroup(tr('support'), [
           _SettingItem(Icons.help_outline, tr('help_center')),
           _SettingItem(Icons.feedback_outlined, tr('feedback')),
-          _SettingItem(Icons.info_outline, tr('about')),
+          _SettingItem(
+            Icons.info_outline,
+            tr('about'),
+            onTap: () {
+              showDialog(
+                context: context,
+                builder: (context) => Dialog(
+                  backgroundColor: AppColors.surface,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.all(24),
+                    constraints: const BoxConstraints(maxWidth: 400),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Logo
+                        Container(
+                          width: 60,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: const LinearGradient(
+                              colors: [
+                                AppColors.primary,
+                                AppColors.primaryDark,
+                              ],
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.visibility,
+                            size: 32,
+                            color: Colors.black,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'SpecEI',
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'SpecEI is an AI-powered smart glasses ecosystem that enhances how you see, understand, and remember the world.\n\n'
+                          'By combining intelligent eyewear with a powerful mobile app, SpecEI captures visual experiences, understands them using AI, and securely stores meaningful insights on your device. With a chat-style interface, you can instantly recall past moments, details, and information—just by asking.\n\n'
+                          'Built with a software-first approach, SpecEI delivers advanced intelligence without expensive hardware, making smart glasses more accessible, lightweight, and practical for everyday use.\n\n'
+                          'Designed for students, professionals, creators, and explorers, SpecEI brings hands-free intelligence into your daily life.',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                            height: 1.5,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Text(
+                          'See smarter. Understand more. Remember effortlessly.',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            fontStyle: FontStyle.italic,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.black,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: Text(
+                              'Close',
+                              style: GoogleFonts.inter(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
         ]),
         const SizedBox(height: 24),
 
@@ -864,9 +1020,9 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: AppColors.getSurface(context),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withOpacity(0.08)),
+              border: Border.all(color: AppColors.getBorderLight(context)),
             ),
             child: Row(
               children: [
@@ -902,14 +1058,14 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
                         style: GoogleFonts.spaceGrotesk(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
+                          color: AppColors.getTextPrimary(context),
                         ),
                       ),
                       Text(
                         email,
                         style: GoogleFonts.inter(
                           fontSize: 12,
-                          color: AppColors.textMuted,
+                          color: AppColors.getTextMuted(context),
                         ),
                       ),
                     ],
@@ -942,9 +1098,9 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
         ),
         Container(
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: AppColors.getSurface(context),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withOpacity(0.08)),
+            border: Border.all(color: AppColors.getBorderLight(context)),
           ),
           child: Column(
             children: items.asMap().entries.map((e) {
@@ -980,10 +1136,14 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
                   width: 32,
                   height: 32,
                   decoration: BoxDecoration(
-                    color: AppColors.inputBackground,
+                    color: AppColors.getInputBackground(context),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(icon, size: 16, color: AppColors.textMuted),
+                  child: Icon(
+                    icon,
+                    size: 16,
+                    color: AppColors.getTextMuted(context),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -992,7 +1152,7 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
                     style: GoogleFonts.inter(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
-                      color: AppColors.textPrimary,
+                      color: AppColors.getTextPrimary(context),
                     ),
                   ),
                 ),
@@ -1008,7 +1168,10 @@ class _DeviceSettingsTabState extends State<DeviceSettingsTab>
         if (!isLast)
           Padding(
             padding: const EdgeInsets.only(left: 60),
-            child: Container(height: 1, color: Colors.white.withOpacity(0.05)),
+            child: Container(
+              height: 1,
+              color: AppColors.getBorderLight(context),
+            ),
           ),
       ],
     );

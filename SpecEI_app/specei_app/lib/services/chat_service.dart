@@ -28,9 +28,21 @@ class ChatService {
     });
   }
 
-  Future<String> sendMessage(String message) async {
+  Future<String> sendMessage(String message, {String? systemContext}) async {
     // Add user message to history
     _conversationHistory.add({'role': 'user', 'content': message});
+
+    // Prepare messages for API (copy history)
+    List<Map<String, String>> apiMessages = List.from(_conversationHistory);
+
+    if (systemContext != null) {
+      // Insert system context before the last user message to guide the response
+      // The last message is the user message we just added
+      apiMessages.insert(apiMessages.length - 1, {
+        'role': 'system',
+        'content': systemContext,
+      });
+    }
 
     try {
       final response = await http.post(
@@ -41,7 +53,7 @@ class ChatService {
         },
         body: json.encode({
           'model': _model,
-          'messages': _conversationHistory,
+          'messages': apiMessages,
           'temperature': 0.7,
           'max_tokens': 1024,
         }),
