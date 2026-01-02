@@ -1,0 +1,64 @@
+# SpecEI Project .gitignore
+
+# Environment and secrets - NEVER commit these
+**/env_config.dart
+**/env_config.*.dart
+!**/env_config.dart.template
+*.env
+.env*
+
+# Firebase configuration with secrets
+google-services.json
+GoogleService-Info.plist
+
+# Flutter/Dart build outputs
+**/build/
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.packages
+**/.pub-cache/
+**/.pub/
+**/pubspec.lock
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Android
+**/android/.gradle/
+**/android/local.properties
+**/android/key.properties
+**/android/*.keystore
+**/android/*.jks
+
+# iOS
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+
+# macOS
+**/macos/Pods/
+**/macos/.symlinks/
+
+# Windows
+**/windows/.plugin_symlinks/
+
+# Temporary files
+*.log
+*.tmp
+*.bak
+*.swp
+*~
+
+# Coverage
+coverage/
+*.lcov
+
+# Test outputs
+test-results/
+
+# Backup folders
+*_backup_*/
