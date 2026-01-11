@@ -1,0 +1,208 @@
+{
+  "_note1": "KEEP THIS FILE! Check it into a version control system (VCS) like git.",
+  "_note2": "ObjectBox manages crucial IDs for your object model. See docs for details.",
+  "_note3": "If you have VCS merge conflicts, you must resolve them according to ObjectBox docs.",
+  "entities": [
+    {
+      "id": "1:5419065009772418613",
+      "lastPropertyId": "11:175472150240486583",
+      "name": "MemoryEvent",
+      "properties": [
+        {
+          "id": "1:7560595817942957781",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:8409742368456743506",
+          "name": "startTime",
+          "type": 10
+        },
+        {
+          "id": "3:5311234575496934226",
+          "name": "endTime",
+          "type": 10
+        },
+        {
+          "id": "4:8476445174406607350",
+          "name": "filePath",
+          "type": 9
+        },
+        {
+          "id": "5:4847399348641968219",
+          "name": "modality",
+          "type": 9
+        },
+        {
+          "id": "6:5853333624825209124",
+          "name": "sessionId",
+          "type": 9
+        },
+        {
+          "id": "7:317423172475970202",
+          "name": "embedding",
+          "indexId": "4:6975913763885735414",
+          "type": 28,
+          "flags": 8
+        },
+        {
+          "id": "8:6556520708834070217",
+          "name": "isEncrypted",
+          "type": 1
+        },
+        {
+          "id": "9:1738019590539624900",
+          "name": "encryptionNonce",
+          "type": 23
+        },
+        {
+          "id": "10:2297200818070377809",
+          "name": "wrappedKey",
+          "type": 23
+        },
+        {
+          "id": "11:175472150240486583",
+          "name": "ephemeralPublicKey",
+          "type": 23
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "2:4185059925301627990",
+      "lastPropertyId": "6:1633470029791658417",
+      "name": "ObjectState",
+      "properties": [
+        {
+          "id": "1:4642508790064033161",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:7957561996451269815",
+          "name": "label",
+          "indexId": "1:9041875230264802186",
+          "type": 9,
+          "flags": 2048
+        },
+        {
+          "id": "3:808149527731651179",
+          "name": "lastConfirmedEventId",
+          "type": 6
+        },
+        {
+          "id": "4:2507673799817020538",
+          "name": "lastConfirmedTime",
+          "type": 10
+        },
+        {
+          "id": "5:8398991025973331228",
+          "name": "confirmationType",
+          "type": 9
+        },
+        {
+          "id": "6:1633470029791658417",
+          "name": "confidenceScore",
+          "type": 8
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "3:6340600280594907136",
+      "lastPropertyId": "6:7518913697003177708",
+      "name": "TranscriptSegment",
+      "properties": [
+        {
+          "id": "1:7134374581283889853",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:5342041396071069843",
+          "name": "eventId",
+          "indexId": "2:6207687665632590218",
+          "type": 11,
+          "flags": 520,
+          "relationTarget": "MemoryEvent"
+        },
+        {
+          "id": "3:5628552671694844074",
+          "name": "text",
+          "type": 9
+        },
+        {
+          "id": "4:7333511925337701755",
+          "name": "startOffsetMs",
+          "type": 6
+        },
+        {
+          "id": "5:4799638530371142915",
+          "name": "endOffsetMs",
+          "type": 6
+        },
+        {
+          "id": "6:7518913697003177708",
+          "name": "vector",
+          "indexId": "5:4247545234082449233",
+          "type": 28,
+          "flags": 8
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "4:3331124592311319228",
+      "lastPropertyId": "5:7862711847645451624",
+      "name": "VisualFrame",
+      "properties": [
+        {
+          "id": "1:869410515118267421",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:7263907025108968283",
+          "name": "eventId",
+          "indexId": "3:2201924458068094333",
+          "type": 11,
+          "flags": 520,
+          "relationTarget": "MemoryEvent"
+        },
+        {
+          "id": "3:937793197676722048",
+          "name": "timestamp",
+          "type": 10
+        },
+        {
+          "id": "4:6088043542076167897",
+          "name": "detectedObjectsJson",
+          "type": 9
+        },
+        {
+          "id": "5:7862711847645451624",
+          "name": "vector",
+          "indexId": "6:7719073029953934020",
+          "type": 28,
+          "flags": 8
+        }
+      ],
+      "relations": []
+    }
+  ],
+  "lastEntityId": "4:3331124592311319228",
+  "lastIndexId": "6:7719073029953934020",
+  "lastRelationId": "0:0",
+  "lastSequenceId": "0:0",
+  "modelVersion": 5,
+  "modelVersionParserMinimum": 5,
+  "retiredEntityUids": [],
+  "retiredIndexUids": [],
+  "retiredPropertyUids": [],
+  "retiredRelationUids": [],
+  "version": 1
+}

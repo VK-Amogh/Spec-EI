@@ -1,0 +1,19 @@
+// SpecEI Environment Configuration Template
+// COPY THIS FILE TO env_config.dart AND FILL IN YOUR KEYS
+
+class EnvConfig {
+  // Firebase Configuration
+  static const String firebaseApiKey = 'YOUR_FIREBASE_API_KEY';
+  static const String firebaseAppId = 'YOUR_FIREBASE_APP_ID';
+  static const String firebaseMessagingSenderId = 'YOUR_MESSAGING_SENDER_ID';
+  static const String firebaseProjectId = 'YOUR_PROJECT_ID';
+  static const String firebaseStorageBucket = 'YOUR_STORAGE_BUCKET';
+
+  // Supabase Configuration
+  static const String supabaseUrl = 'YOUR_SUPABASE_URL';
+  static const String supabaseAnonKey = 'YOUR_SUPABASE_ANON_KEY';
+
+  // Groq AI Configuration (get free key at console.groq.com/keys)
+  static const String groqApiKey = 'YOUR_GROQ_API_KEY';
+}
+

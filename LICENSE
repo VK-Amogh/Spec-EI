@@ -1,0 +1,60 @@
+MIT License
+
+Copyright (c) 2024 VK-Amogh
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+## Additional Terms
+
+### Proprietary Assets
+
+The following elements are NOT covered by the MIT license and remain the 
+exclusive property of VK-Amogh and SpecEI:
+
+1. **Brand Assets**: SpecEI logos, trademarks, and brand identity materials
+2. **UI/UX Designs**: Original design files in the `SpecEI_UI-UX/` directory
+3. **Business Logic**: Proprietary algorithms for AI memory processing
+
+### Third-Party Licenses
+
+This project uses the following third-party packages, each with their own 
+licenses:
+
+- **Flutter** - BSD 3-Clause License
+- **Firebase** - Apache 2.0 License
+- **Supabase** - Apache 2.0 License
+- **Google Fonts** - Various open source licenses
+
+### Usage Restrictions
+
+1. Commercial use of the SpecEI brand requires explicit written permission
+2. Redistribution must include this license file
+3. Modified versions must be clearly marked as such
+4. The licensor reserves the right to revoke license for violations
+
+### Contact for Commercial Licensing
+
+For commercial licensing inquiries, please contact:
+- GitHub: [@VK-Amogh](https://github.com/VK-Amogh)
+
+---
+
+By using this software, you agree to abide by the terms outlined above.

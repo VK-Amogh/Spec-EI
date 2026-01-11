@@ -1,0 +1,137 @@
+﻿./gradlew : WARNING: A restricted method in java.lang.System has been called
+At line:1 char:13
++ cd android; ./gradlew assembleRelease 2>&1 | Out-File -FilePath ../bu ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (WARNING: A rest...has been calle 
+   d:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+WARNING: java.lang.System::load has been called by 
+net.rubygrapefruit.platform.internal.NativeLibraryLoader in an unnamed module 
+(file:/C:/Users/amogh/.gradle/wrapper/dists/gradle-8.12-all/ejduaidbjup3bmmkhw
+3rie4zb/gradle-8.12/lib/native-platform-0.22-milestone-27.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for 
+callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native 
+access is enabled
+
+> Task :gradle:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :gradle:compileKotlin UP-TO-DATE
+> Task :gradle:compileJava NO-SOURCE
+> Task :gradle:compileGroovy NO-SOURCE
+> Task :gradle:pluginDescriptors UP-TO-DATE
+> Task :gradle:processResources UP-TO-DATE
+> Task :gradle:classes UP-TO-DATE
+> Task :gradle:jar UP-TO-DATE
+
+> Configure project :video_player_android
+Your project is configured with Android NDK 27.0.12077973, but the following 
+plugin(s) depend on a different Android NDK version:
+- root_jailbreak_sniffer requires Android NDK 29.0.14033849
+Fix this issue by using the highest Android NDK version (they are backward 
+compatible).
+Add the following to 
+D:\Startup\SpecEI\SpecEI_app\specei_app\android\app\build.gradle.kts:
+
+    android {
+        ndkVersion = "29.0.14033849"
+        ...
+    }
+
+> Task :app:ReleaseMinSdkCheck
+
+> Task :app:compileFlutterBuildRelease
+lib/services/security_service.dart:8:5: Error: 'try' can't be used as an 
+identifier because it's a keyword.
+Try renaming this to be an identifier that isn't a keyword.
+    try {
+    ^^^
+lib/services/security_service.dart:8:5: Error: A function declaration needs 
+an explicit list of parameters.
+Try adding a parameter list to the function declaration.
+    try {
+    ^^^
+lib/services/security_service.dart:16:7: Error: 'catch' can't be used as an 
+identifier because it's a keyword.
+Try renaming this to be an identifier that isn't a keyword.
+    } catch (e) {
+      ^^^^^
+lib/services/security_service.dart:19:1: Error: Directives must appear before 
+any declarations.
+Try moving the directive before any declarations.
+import '../core/logger.dart';
+^^^^^^
+lib/services/security_service.dart:4:8: Error: Error when reading '/C:/Users/a
+mogh/AppData/Local/Pub/Cache/hosted/pub.dev/root_jailbreak_sniffer-1.1.4/lib/r
+oot_jailbreak_sniffer.dart': The system cannot find the file specified.
+
+import 'package:root_jailbreak_sniffer/root_jailbreak_sniffer.dart';
+       ^
+lib/services/security_service.dart:176:30: Error: The getter 
+'RootJailbreakSniffer' isn't defined for the class 'SecurityService'.
+ - 'SecurityService' is from 
+'package:specei_app/services/security_service.dart' 
+('lib/services/security_service.dart').
+Try correcting the name to the name of an existing getter, or defining a 
+getter or field named 'RootJailbreakSniffer'.
+      final isRooted = await RootJailbreakSniffer.isRooted;
+                             ^^^^^^^^^^^^^^^^^^^^
+lib/services/security_service.dart:193:15: Error: The getter 
+'FlutterWindowManager' isn't defined for the class 'SecurityService'.
+ - 'SecurityService' is from 
+'package:specei_app/services/security_service.dart' 
+('lib/services/security_service.dart').
+Try correcting the name to the name of an existing getter, or defining a 
+getter or field named 'FlutterWindowManager'.
+        await FlutterWindowManager.addFlags(FlutterWindowManager.FLAG_SECURE);
+              ^^^^^^^^^^^^^^^^^^^^
+lib/services/security_service.dart:193:45: Error: The getter 
+'FlutterWindowManager' isn't defined for the class 'SecurityService'.
+ - 'SecurityService' is from 
+'package:specei_app/services/security_service.dart' 
+('lib/services/security_service.dart').
+Try correcting the name to the name of an existing getter, or defining a 
+getter or field named 'FlutterWindowManager'.
+        await FlutterWindowManager.addFlags(FlutterWindowManager.FLAG_SECURE);
+                                            ^^^^^^^^^^^^^^^^^^^^
+lib/services/media_analysis_service.dart:922:47: Error: The method 
+'nearestNeighbor' isn't defined for the class 
+'QueryHnswProperty<MemoryEvent>'.
+ - 'QueryHnswProperty' is from 
+'package:objectbox/src/native/query/query.dart' ('/C:/Users/amogh/AppData/Loca
+l/Pub/Cache/hosted/pub.dev/objectbox-4.3.1/lib/src/native/query/query.dart').
+ - 'MemoryEvent' is from 'package:specei_app/database/entities.dart' 
+('lib/database/entities.dart').
+Try correcting the name to the name of an existing method, or defining a 
+method named 'nearestNeighbor'.
+                .query(MemoryEvent_.embedding.nearestNeighbor(queryVector, 
+20))
+                                              ^^^^^^^^^^^^^^^
+Target kernel_snapshot_program failed: Exception
+
+
+> Task :app:compileFlutterBuildRelease FAILED
+
+[Incubating] Problems report is available at: file:///D:/Startup/SpecEI/SpecEI_app/specei_app/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileFlutterBuildRelease'.
+> Process 'command 'C:\Flutter\Src\flutter\bin\flutter.bat'' finished with 
+non-zero exit value 1
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.12/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 29s
+6 actionable tasks: 2 executed, 4 up-to-date
