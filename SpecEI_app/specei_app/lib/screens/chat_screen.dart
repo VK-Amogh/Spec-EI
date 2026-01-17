@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
-import 'dart:io';
+// import 'dart:io'; // Disabled for web compatibility
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
@@ -130,13 +130,8 @@ No extra text.
       _scrollToBottom();
 
       try {
-        // Read image bytes
-        final Uint8List bytes;
-        if (kIsWeb) {
-          bytes = await file.readAsBytes();
-        } else {
-          bytes = await File(file.path).readAsBytes();
-        }
+        // Read image bytes - works on both web and native
+        final Uint8List bytes = await file.readAsBytes();
 
         // Use custom prompt if text was provided, otherwise use default
         final String? customPrompt = widget.initialQuery;
@@ -450,23 +445,14 @@ Answer the user's question using ONLY the above memory records.
               if (isImage && imagePath != null) ...[
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: kIsWeb
-                      ? Image.network(
-                          imagePath,
-                          width: 150,
-                          height: 150,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              _buildImagePlaceholder(),
-                        )
-                      : Image.file(
-                          File(imagePath),
-                          width: 150,
-                          height: 150,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              _buildImagePlaceholder(),
-                        ),
+                  child: Image.network(
+                    imagePath,
+                    width: 150,
+                    height: 150,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) =>
+                        _buildImagePlaceholder(),
+                  ),
                 ),
                 if (!isImage) const SizedBox(height: 8),
               ],

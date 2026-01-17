@@ -7,7 +7,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'core/app_theme.dart';
 import 'core/env_config.dart';
 import 'core/logger.dart';
-import 'screens/login_screen.dart';
+
 import 'screens/reset_password_screen.dart';
 import 'screens/otp_verification_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -116,25 +116,26 @@ class SpecEIApp extends StatelessWidget {
             GlobalCupertinoLocalizations.delegate,
           ],
           // Auth-aware home - automatically redirect to MainScreen when logged in
-          home: StreamBuilder<User?>(
-            stream: FirebaseAuth.instance.authStateChanges(),
-            builder: (context, snapshot) {
-              // Auth state logging (masked in production)
-              AppLogger.debug(
-                'Auth: ${snapshot.connectionState}, user=${AppLogger.maskEmail(snapshot.data?.email)}',
-              );
-
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Scaffold(
-                  body: Center(child: CircularProgressIndicator()),
-                );
-              }
-              if (snapshot.hasData) {
-                return const MainScreen();
-              }
-              return const LoginScreen();
-            },
-          ),
+          // home: StreamBuilder<User?>(
+          //   stream: FirebaseAuth.instance.authStateChanges(),
+          //   builder: (context, snapshot) {
+          //     // Auth state logging (masked in production)
+          //     AppLogger.debug(
+          //       'Auth: ${snapshot.connectionState}, user=${AppLogger.maskEmail(snapshot.data?.email)}',
+          //     );
+          //
+          //     if (snapshot.connectionState == ConnectionState.waiting) {
+          //       return const Scaffold(
+          //         body: Center(child: CircularProgressIndicator()),
+          //       );
+          //     }
+          //     if (snapshot.hasData) {
+          //       return const MainScreen();
+          //     }
+          //     return const LoginScreen();
+          //   },
+          // ),
+          home: const MainScreen(), // TEMPORARY BYPASS
           // Named routes for OTP verification and password reset flows
           onGenerateRoute: (settings) {
             if (settings.name == '/reset-password') {

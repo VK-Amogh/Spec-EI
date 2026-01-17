@@ -15,11 +15,12 @@ import '../chat_screen.dart';
 import '../focus_mode_screen.dart';
 import '../notes_screen.dart';
 import '../../widgets/reminder_dialog.dart';
+import '../../widgets/voice_interaction_ball.dart';
 import '../../services/notification_service.dart';
 
 import '../camera_screen.dart';
 
-/// Home Tab - AI Hub with animated orb
+/// Home Tab - AI Hub with Voice Interaction Ball
 /// Matches design from home_/_ai_hub_ultimate_ui_1
 class HomeTab extends StatefulWidget {
   const HomeTab({super.key});
@@ -29,13 +30,12 @@ class HomeTab extends StatefulWidget {
 }
 
 class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
-  late AnimationController _orbController;
-  late AnimationController _rippleController;
-  late AnimationController _ring1Controller;
-  late AnimationController _ring2Controller;
   late AnimationController _marqueeController;
   late ScrollController _promptScrollController;
   final TextEditingController _inputController = TextEditingController();
+
+  // Voice Interaction State
+  bool _isAiSpeaking = false; // Simulated AI speaking state
 
   // Battery
   final BatteryService _batteryService = BatteryService();
@@ -62,25 +62,6 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    _orbController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 3),
-    )..repeat(reverse: true);
-
-    _rippleController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
-    )..repeat();
-
-    _ring1Controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 20),
-    )..repeat();
-
-    _ring2Controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 30),
-    )..repeat(reverse: true);
 
     // Marquee auto-scroll setup
     _promptScrollController = ScrollController();
@@ -148,10 +129,6 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
 
   @override
   void dispose() {
-    _orbController.dispose();
-    _rippleController.dispose();
-    _ring1Controller.dispose();
-    _ring2Controller.dispose();
     _marqueeController.dispose();
     _promptScrollController.dispose();
     _inputController.dispose();
@@ -179,8 +156,14 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                 _buildStatusBar(),
                 const SizedBox(height: 32),
 
-                // Animated orb
-                _buildAnimatedOrb(),
+                // Voice Interaction Ball
+                VoiceInteractionBall(
+                  isListening: _isRecording,
+                  isSpeaking: _isAiSpeaking,
+                  audioLevel: _isRecording
+                      ? 0.0
+                      : 0.0, // Placeholder for audio level
+                ),
                 const SizedBox(height: 32),
 
                 // Adaptive Dashboard
@@ -335,161 +318,6 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildAnimatedOrb() {
-    return SizedBox(
-      width: 280,
-      height: 280,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // Outer rotating ring with multiple dots
-          AnimatedBuilder(
-            animation: _ring1Controller,
-            builder: (context, child) {
-              return Transform.rotate(
-                angle: _ring1Controller.value * 2 * math.pi,
-                child: SizedBox(
-                  width: 280,
-                  height: 280,
-                  child: CustomPaint(
-                    painter: _RingWithDotsPainter(
-                      radius: 140,
-                      ringColor: Colors.grey.shade800,
-                      dotColor: AppColors.primary,
-                      dotRadius: 5,
-                      dotPositions: [0, 90, 180, 270], // degrees
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-
-          // Inner dashed ring with dots (rotates opposite direction)
-          AnimatedBuilder(
-            animation: _ring2Controller,
-            builder: (context, child) {
-              return Transform.rotate(
-                angle: -_ring2Controller.value * 2 * math.pi,
-                child: SizedBox(
-                  width: 240,
-                  height: 240,
-                  child: CustomPaint(
-                    painter: _RingWithDotsPainter(
-                      radius: 120,
-                      ringColor: Colors.grey.shade800,
-                      dotColor: AppColors.primary.withOpacity(0.7),
-                      dotRadius: 4,
-                      dotPositions: [45, 135, 225, 315], // offset degrees
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-
-          // Glowing ring
-          Container(
-            width: 180,
-            height: 180,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.grey.shade800, width: 1),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withOpacity(0.05),
-                  blurRadius: 20,
-                  spreadRadius: 5,
-                ),
-              ],
-            ),
-          ),
-
-          // Ripple effects
-          ..._buildRipples(),
-
-          // Core orb
-          AnimatedBuilder(
-            animation: _orbController,
-            builder: (context, child) {
-              final scale = 1.0 + (_orbController.value * 0.05);
-              return Transform.scale(
-                scale: scale,
-                child: Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      colors: [AppColors.primary, Color(0xFF16A34A)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primaryGlow,
-                        blurRadius: 40,
-                        spreadRadius: 10,
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  List<Widget> _buildRipples() {
-    return [
-      AnimatedBuilder(
-        animation: _rippleController,
-        builder: (context, child) {
-          final scale = 0.8 + (_rippleController.value * 0.7);
-          final opacity = 0.6 * (1 - _rippleController.value);
-          return Transform.scale(
-            scale: scale,
-            child: Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: AppColors.primary.withOpacity(opacity),
-                  width: 1,
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-      AnimatedBuilder(
-        animation: _rippleController,
-        builder: (context, child) {
-          final adjustedValue = (_rippleController.value + 0.5) % 1.0;
-          final scale = 0.8 + (adjustedValue * 0.7);
-          final opacity = 0.6 * (1 - adjustedValue);
-          return Transform.scale(
-            scale: scale,
-            child: Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: AppColors.primary.withOpacity(opacity),
-                  width: 1,
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    ];
-  }
-
   Widget _buildDashboardSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -625,15 +453,6 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                         fontWeight: FontWeight.w500,
                         color: AppColors.getTextMuted(context),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Tap ⋯ above to add notes, reminders, or start focus mode',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        color: AppColors.getTextMuted(context),
-                      ),
-                      textAlign: TextAlign.center,
                     ),
                   ],
                 ),
@@ -945,90 +764,92 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
   Widget _buildQuickActionChip(String text, {bool showDot = false}) {
     return Material(
       color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          // Auto-send to chat with smooth transition
-          Navigator.of(context).push(
-            PageRouteBuilder(
-              pageBuilder: (context, animation, secondaryAnimation) =>
-                  ChatScreen(initialQuery: text),
-              transitionDuration: const Duration(milliseconds: 400),
-              reverseTransitionDuration: const Duration(milliseconds: 350),
-              transitionsBuilder:
-                  (context, animation, secondaryAnimation, child) {
-                    // Chat screen slides UP from below smoothly
-                    final slideIn =
-                        Tween<Offset>(
-                          begin: const Offset(0, 1.0),
-                          end: Offset.zero,
-                        ).animate(
-                          CurvedAnimation(
-                            parent: animation,
-                            curve: Curves.easeOutCubic,
-                          ),
-                        );
-
-                    return SlideTransition(position: slideIn, child: child);
-                  },
-            ),
-          );
-        },
-        borderRadius: BorderRadius.circular(24),
-        splashColor: AppColors.primary.withOpacity(0.2),
-        highlightColor: AppColors.primary.withOpacity(0.1),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-          decoration: BoxDecoration(
-            color: AppColors.getInputBackground(context),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: showDot
-                  ? AppColors.primary.withOpacity(0.3)
-                  : AppColors.getBorderLight(context),
-              width: 1,
-            ),
-            boxShadow: showDot
-                ? [
-                    BoxShadow(
-                      color: AppColors.primary.withOpacity(0.1),
-                      blurRadius: 8,
-                      spreadRadius: 0,
-                    ),
-                  ]
-                : null,
+      child: Ink(
+        decoration: BoxDecoration(
+          color: AppColors.getInputBackground(context),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: showDot
+                ? AppColors.primary.withOpacity(0.3)
+                : AppColors.getBorderLight(context),
+            width: 1,
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (showDot) ...[
-                Container(
-                  width: 7,
-                  height: 7,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.primary,
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withOpacity(0.6),
-                        blurRadius: 6,
-                        spreadRadius: 1,
-                      ),
-                    ],
+          boxShadow: showDot
+              ? [
+                  BoxShadow(
+                    color: AppColors.primary.withOpacity(0.1),
+                    blurRadius: 8,
+                    spreadRadius: 0,
+                  ),
+                ]
+              : null,
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(24),
+          splashColor: AppColors.primary.withOpacity(0.2),
+          highlightColor: AppColors.primary.withOpacity(0.1),
+          onTap: () {
+            // Auto-send to chat with smooth transition
+            Navigator.of(context).push(
+              PageRouteBuilder(
+                pageBuilder: (context, animation, secondaryAnimation) =>
+                    ChatScreen(initialQuery: text),
+                transitionDuration: const Duration(milliseconds: 400),
+                reverseTransitionDuration: const Duration(milliseconds: 350),
+                transitionsBuilder:
+                    (context, animation, secondaryAnimation, child) {
+                      // Chat screen slides UP from below smoothly
+                      final slideIn =
+                          Tween<Offset>(
+                            begin: const Offset(0, 1.0),
+                            end: Offset.zero,
+                          ).animate(
+                            CurvedAnimation(
+                              parent: animation,
+                              curve: Curves.easeOutCubic,
+                            ),
+                          );
+
+                      return SlideTransition(position: slideIn, child: child);
+                    },
+              ),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (showDot) ...[
+                  Container(
+                    width: 7,
+                    height: 7,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.primary,
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withOpacity(0.6),
+                          blurRadius: 6,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                ],
+                Text(
+                  text,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: showDot
+                        ? AppColors.getTextPrimary(context)
+                        : AppColors.getTextSecondary(context),
                   ),
                 ),
-                const SizedBox(width: 10),
               ],
-              Text(
-                text,
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: showDot
-                      ? AppColors.getTextPrimary(context)
-                      : AppColors.getTextSecondary(context),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),

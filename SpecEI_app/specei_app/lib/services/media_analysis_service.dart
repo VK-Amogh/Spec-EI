@@ -1,11 +1,12 @@
-import 'dart:io';
+// import 'dart:io'; // Disabled for web compatibility
 import 'dart:math';
 import 'dart:typed_data';
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:cryptography/cryptography.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../objectbox.g.dart'; // Generated ObjectBox code
+import '../objectbox.g.dart'; // Generated ObjectBox code (web stub)
 import '../database/entities.dart';
 // Access global objectBox store if available, or we open local
 import 'memory_data_service.dart';
@@ -14,6 +15,16 @@ import 'chat_service.dart';
 import 'encryption_service.dart'; // E2EE Support
 import 'memory_retrieval_service.dart'; // The new Intelligence Layer
 import 'server_upload_service.dart'; // Server-Centric Architecture v3.0
+
+// Web-compatible File stub
+class File {
+  final String path;
+  File(this.path);
+  Future<bool> exists() async => false;
+  Future<Uint8List> readAsBytes() async => Uint8List(0);
+  Future<void> writeAsBytes(List<int> bytes) async {}
+  Future<void> delete() async {}
+}
 
 /// AI-powered Media Analysis Service
 ///
@@ -1365,6 +1376,8 @@ Return ONLY JSON.''';
         );
 
         // 2. ObjectBox Local Index (Level 1 Memory - O(1) Access)
+        // NOTE: Disabled for web compatibility - ObjectBox not supported on web
+        /*
         if (_storeInitialized && _objectStateBox != null) {
           final label = (obj['label'] as String).toLowerCase();
           final confidence = (obj['confidence'] as num?)?.toDouble() ?? 0.85;
@@ -1399,6 +1412,7 @@ Return ONLY JSON.''';
             _objectStateBox!.put(newState);
           }
         }
+        */
       }
       print(
         '📦 Stored ${objects.length} detected objects for Level 1 & Level 3 memory',

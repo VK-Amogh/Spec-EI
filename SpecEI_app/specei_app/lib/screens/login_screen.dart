@@ -5,6 +5,7 @@ import '../widgets/custom_text_field.dart';
 import '../widgets/primary_button.dart';
 import '../widgets/social_auth_button.dart';
 import '../widgets/glass_panel.dart';
+import '../widgets/breathing_glow.dart';
 import '../services/auth_service.dart';
 import '../services/supabase_service.dart';
 import 'registration_screen.dart';
@@ -219,124 +220,133 @@ class _LoginScreenState extends State<LoginScreen> {
                       _buildLogoSection(),
                       const SizedBox(height: 32),
 
-                      // Login form panel
-                      GlassPanel(
-                        padding: const EdgeInsets.all(32),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.white.withOpacity(
-                              0.1,
-                            ), // Light blurred white glow
-                            blurRadius: 60,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                        child: Form(
-                          key: _formKey,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Header
-                              _buildHeader(),
-                              const SizedBox(height: 24),
+                      // Login form panel with breathing effect
+                      BreathingGlow(
+                        glowColor: Colors.white,
+                        maxOpacity: 0.04,
+                        enableFloating: true,
+                        floatingRange: 6.0,
+                        blurRadius: 40,
+                        spreadRadius: 4,
+                        duration: const Duration(seconds: 3),
+                        child: GlassPanel(
+                          padding: const EdgeInsets.all(32),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.white.withOpacity(
+                                0.05,
+                              ), // Light blurred white glow
+                              blurRadius: 60,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                          child: Form(
+                            key: _formKey,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Header
+                                _buildHeader(),
+                                const SizedBox(height: 24),
 
-                              // Error message
-                              if (_errorMessage != null) ...[
-                                _buildErrorMessage(),
-                                const SizedBox(height: 16),
-                              ],
-
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  CustomTextField(
-                                    label: 'EMAIL',
-                                    placeholder: 'name@gmail.com',
-                                    prefixIcon: Icons.mail_outline,
-                                    controller: _emailController,
-                                    keyboardType: TextInputType.emailAddress,
-                                    errorText: _emailValidationError,
-                                    onChanged: (_) => _onEmailChanged(),
-                                    validator: (value) {
-                                      if (value == null || value.isEmpty) {
-                                        return 'Please enter your email';
-                                      }
-                                      return _emailValidationError;
-                                    },
-                                  ),
-                                  // Account existence check removed - Firebase deprecated this API
+                                // Error message
+                                if (_errorMessage != null) ...[
+                                  _buildErrorMessage(),
+                                  const SizedBox(height: 16),
                                 ],
-                              ),
-                              const SizedBox(height: 20),
 
-                              // Password field
-                              CustomTextField(
-                                label: 'PASSWORD',
-                                placeholder: '••••••••',
-                                prefixIcon: Icons.lock_outline,
-                                suffixIcon: _obscurePassword
-                                    ? Icons.visibility_off_outlined
-                                    : Icons.visibility_outlined,
-                                onSuffixTap: () {
-                                  setState(() {
-                                    _obscurePassword = !_obscurePassword;
-                                  });
-                                },
-                                obscureText: _obscurePassword,
-                                controller: _passwordController,
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Please enter your password';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 12),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    CustomTextField(
+                                      label: 'EMAIL',
+                                      placeholder: 'name@gmail.com',
+                                      prefixIcon: Icons.mail_outline,
+                                      controller: _emailController,
+                                      keyboardType: TextInputType.emailAddress,
+                                      errorText: _emailValidationError,
+                                      onChanged: (_) => _onEmailChanged(),
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return 'Please enter your email';
+                                        }
+                                        return _emailValidationError;
+                                      },
+                                    ),
+                                    // Account existence check removed - Firebase deprecated this API
+                                  ],
+                                ),
+                                const SizedBox(height: 20),
 
-                              // Forgot password link
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: TextButton(
-                                  onPressed: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) =>
-                                            const ForgotPasswordScreen(),
-                                      ),
-                                    );
+                                // Password field
+                                CustomTextField(
+                                  label: 'PASSWORD',
+                                  placeholder: '••••••••',
+                                  prefixIcon: Icons.lock_outline,
+                                  suffixIcon: _obscurePassword
+                                      ? Icons.visibility_off_outlined
+                                      : Icons.visibility_outlined,
+                                  onSuffixTap: () {
+                                    setState(() {
+                                      _obscurePassword = !_obscurePassword;
+                                    });
                                   },
-                                  style: TextButton.styleFrom(
-                                    padding: EdgeInsets.zero,
-                                    minimumSize: Size.zero,
-                                    tapTargetSize:
-                                        MaterialTapTargetSize.shrinkWrap,
-                                  ),
-                                  child: Text(
-                                    'Forgot Password?',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                      color: AppColors.textMuted,
+                                  obscureText: _obscurePassword,
+                                  controller: _passwordController,
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Please enter your password';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                const SizedBox(height: 12),
+
+                                // Forgot password link
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: TextButton(
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              const ForgotPasswordScreen(),
+                                        ),
+                                      );
+                                    },
+                                    style: TextButton.styleFrom(
+                                      padding: EdgeInsets.zero,
+                                      minimumSize: Size.zero,
+                                      tapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    child: Text(
+                                      'Forgot Password?',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: AppColors.textMuted,
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(height: 20),
+                                const SizedBox(height: 20),
 
-                              // Login button
-                              PrimaryButton(
-                                text: 'Login',
-                                isLoading: _isLoading,
-                                onPressed: _handleLogin,
-                              ),
+                                // Login button
+                                PrimaryButton(
+                                  text: 'Login',
+                                  isLoading: _isLoading,
+                                  onPressed: _handleLogin,
+                                ),
 
-                              // Divider
-                              _buildDivider(),
+                                // Divider
+                                _buildDivider(),
 
-                              // Social buttons
-                              _buildSocialButtons(),
-                            ],
+                                // Social buttons
+                                _buildSocialButtons(),
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -449,7 +459,7 @@ class _LoginScreenState extends State<LoginScreen> {
           style: GoogleFonts.spaceGrotesk(
             fontSize: 24,
             fontWeight: FontWeight.bold,
-            color: AppColors.primary,
+            color: AppColors.textPrimary,
           ),
         ),
         const SizedBox(height: 4),

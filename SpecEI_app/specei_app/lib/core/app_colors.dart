@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'app_colors_light.dart';
 
 /// SpecEI Design System Colors
 /// Extracted from reference HTML/CSS designs
@@ -8,20 +7,21 @@ class AppColors {
   AppColors._();
 
   // Core backgrounds (dark theme - static)
-  static const Color background = Color(0xFF000000);
-  static const Color surface = Color(0xFF111111);
-  static const Color inputBackground = Color(0xFF1A1A1A);
+  static const Color background = Color(0xFF0A0A0A);
+  static const Color surface = Color(0xFF0F0F0F);
+  static const Color inputBackground = Color(0xFF0F0F0F);
 
   // Primary brand colors (same for both themes)
-  static const Color primary = Color(0xFF4ADE80);
-  static const Color primaryDark = Color(0xFF22C55E);
-  static const Color primaryGlow = Color(0x804ADE80);
+  static const Color primary = Color(0xFF137E3E); // Brand Accent
+  static const Color primaryDark = Color(0xFF0E5E2E);
+  static const Color primaryHighlight = Color(0xFF00FF88); // Neon Highlight
+  static const Color primaryGlow = Color(0x8000FF88);
 
   // Text colors (dark theme - static)
   static const Color textPrimary = Color(0xFFFFFFFF);
-  static const Color textSecondary = Color(0xFF9CA3AF);
-  static const Color textMuted = Color(0xFF6B7280);
-  static const Color textDimmed = Color(0xFF4B5563);
+  static const Color textSecondary = Color(0xFF888888);
+  static const Color textMuted = Color(0xFF888888);
+  static const Color textDimmed = Color(0xFF888888);
 
   // Border colors (dark theme - static)
   static const Color borderLight = Color(0x0DFFFFFF);
@@ -56,41 +56,41 @@ class AppColors {
 
   /// Check if current theme is dark
   static bool isDark(BuildContext context) {
-    return Theme.of(context).brightness == Brightness.dark;
+    return true; // Force dark mode
   }
 
   /// Get background color based on current theme
   static Color getBackground(BuildContext context) {
-    return isDark(context) ? background : AppColorsLight.background;
+    return background;
   }
 
   /// Get surface color based on current theme
   static Color getSurface(BuildContext context) {
-    return isDark(context) ? surface : AppColorsLight.surface;
+    return surface;
   }
 
   /// Get input background based on current theme
   static Color getInputBackground(BuildContext context) {
-    return isDark(context) ? inputBackground : AppColorsLight.inputBackground;
+    return inputBackground;
   }
 
   /// Get primary text color based on current theme
   static Color getTextPrimary(BuildContext context) {
-    return isDark(context) ? textPrimary : AppColorsLight.textPrimary;
+    return textPrimary;
   }
 
   /// Get secondary text color based on current theme
   static Color getTextSecondary(BuildContext context) {
-    return isDark(context) ? textSecondary : AppColorsLight.textSecondary;
+    return textSecondary;
   }
 
   /// Get muted text color based on current theme
   static Color getTextMuted(BuildContext context) {
-    return isDark(context) ? textMuted : AppColorsLight.textMuted;
+    return textMuted;
   }
 
   /// Get border color based on current theme
   static Color getBorderLight(BuildContext context) {
-    return isDark(context) ? borderLight : AppColorsLight.borderLight;
+    return borderLight;
   }
 }

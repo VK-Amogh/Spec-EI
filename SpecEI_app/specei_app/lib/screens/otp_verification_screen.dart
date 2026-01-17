@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../core/app_colors.dart';
 import '../widgets/glass_panel.dart';
 import '../services/supabase_service.dart';
+import '../widgets/breathing_glow.dart';
 
 /// OTP Verification Screen
 /// 6-digit OTP input with auto-focus, mock OTP generation, and countdown timer
@@ -308,31 +309,49 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
                       padding: const EdgeInsets.all(24),
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 450),
-                        child: GlassPanel(
-                          padding: const EdgeInsets.all(32),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _buildIcon(),
-                              const SizedBox(height: 24),
-                              _buildTitle(),
-                              const SizedBox(height: 8),
-                              _buildSubtitle(),
-                              const SizedBox(height: 32),
-                              if (_isSuccess)
-                                _buildSuccessState()
-                              else ...[
-                                _buildOtpFields(),
-                                const SizedBox(height: 16),
-                                _buildAutoEnterButton(),
-                                if (_showError) ...[
-                                  const SizedBox(height: 16),
-                                  _buildErrorMessage(),
-                                ],
-                                const SizedBox(height: 24),
-                                _buildResendSection(),
-                              ],
+                        child: BreathingGlow(
+                          glowColor: Colors.white,
+                          maxOpacity: 0.04,
+                          enableFloating: true,
+                          floatingRange: 6.0,
+                          blurRadius: 40,
+                          spreadRadius: 4,
+                          duration: const Duration(seconds: 3),
+                          child: GlassPanel(
+                            padding: const EdgeInsets.all(32),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.white.withOpacity(
+                                  0.05,
+                                ), // Light blurred white glow
+                                blurRadius: 60,
+                                spreadRadius: 2,
+                              ),
                             ],
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _buildIcon(),
+                                const SizedBox(height: 24),
+                                _buildTitle(),
+                                const SizedBox(height: 8),
+                                _buildSubtitle(),
+                                const SizedBox(height: 32),
+                                if (_isSuccess)
+                                  _buildSuccessState()
+                                else ...[
+                                  _buildOtpFields(),
+                                  const SizedBox(height: 16),
+                                  _buildAutoEnterButton(),
+                                  if (_showError) ...[
+                                    const SizedBox(height: 16),
+                                    _buildErrorMessage(),
+                                  ],
+                                  const SizedBox(height: 24),
+                                  _buildResendSection(),
+                                ],
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -354,21 +373,35 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
         child: Stack(
           children: [
             Positioned(
-              top: -100,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Container(
-                  width: 500,
-                  height: 500,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
-                        AppColors.primary.withOpacity(0.08),
-                        Colors.transparent,
-                      ],
-                    ),
+              top: -120,
+              left: -60,
+              child: Container(
+                width: 600,
+                height: 600,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      AppColors.primary.withOpacity(0.05),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: -60,
+              right: -60,
+              child: Container(
+                width: 500,
+                height: 500,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      AppColors.primary.withOpacity(0.05),
+                      Colors.transparent,
+                    ],
                   ),
                 ),
               ),

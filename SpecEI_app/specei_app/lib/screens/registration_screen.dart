@@ -6,6 +6,7 @@ import '../widgets/custom_text_field.dart';
 import '../widgets/primary_button.dart';
 import '../widgets/social_auth_button.dart';
 import '../widgets/glass_panel.dart';
+import '../widgets/breathing_glow.dart';
 import '../services/auth_service.dart';
 import '../services/supabase_service.dart';
 import 'login_screen.dart';
@@ -407,57 +408,75 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     children: [
                       _buildLogoSection(),
                       const SizedBox(height: 32),
-                      GlassPanel(
-                        padding: const EdgeInsets.all(32),
-                        enableGlow: false,
-                        child: Form(
-                          key: _formKey,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Center(
-                                child: Text(
-                                  'Create Account',
-                                  style: GoogleFonts.spaceGrotesk(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.primary,
+                      // Registration form panel with breathing effect
+                      BreathingGlow(
+                        glowColor: Colors.white,
+                        maxOpacity: 0.04,
+                        enableFloating: true,
+                        floatingRange: 6.0,
+                        blurRadius: 40,
+                        spreadRadius: 4,
+                        duration: const Duration(seconds: 3),
+                        child: GlassPanel(
+                          padding: const EdgeInsets.all(32),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.white.withOpacity(
+                                0.05,
+                              ), // Light blurred white glow
+                              blurRadius: 60,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                          child: Form(
+                            key: _formKey,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Center(
+                                  child: Text(
+                                    'Create Account',
+                                    style: GoogleFonts.spaceGrotesk(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textPrimary,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(height: 24),
-                              if (_errorMessage != null) ...[
-                                _buildErrorMessage(),
-                                const SizedBox(height: 16),
+                                const SizedBox(height: 24),
+                                if (_errorMessage != null) ...[
+                                  _buildErrorMessage(),
+                                  const SizedBox(height: 16),
+                                ],
+
+                                // Full Name field
+                                _buildNameField(),
+                                const SizedBox(height: 20),
+
+                                // Email field with verify button
+                                _buildEmailField(),
+                                const SizedBox(height: 20),
+
+                                // Phone field (enabled after email verified)
+                                _buildPhoneField(),
+                                const SizedBox(height: 20),
+
+                                // Password fields (enabled after both verified)
+                                _buildPasswordFields(),
+                                const SizedBox(height: 24),
+
+                                // Sign Up button
+                                PrimaryButton(
+                                  text: 'Sign Up',
+                                  isLoading: _isLoading,
+                                  showArrow: false,
+                                  onPressed: _canSignUp ? _handleSignUp : null,
+                                ),
+
+                                _buildDivider(),
+                                _buildSocialButtons(),
                               ],
-
-                              // Full Name field
-                              _buildNameField(),
-                              const SizedBox(height: 20),
-
-                              // Email field with verify button
-                              _buildEmailField(),
-                              const SizedBox(height: 20),
-
-                              // Phone field (enabled after email verified)
-                              _buildPhoneField(),
-                              const SizedBox(height: 20),
-
-                              // Password fields (enabled after both verified)
-                              _buildPasswordFields(),
-                              const SizedBox(height: 24),
-
-                              // Sign Up button
-                              PrimaryButton(
-                                text: 'Sign Up',
-                                isLoading: _isLoading,
-                                showArrow: false,
-                                onPressed: _canSignUp ? _handleSignUp : null,
-                              ),
-
-                              _buildDivider(),
-                              _buildSocialButtons(),
-                            ],
+                            ),
                           ),
                         ),
                       ),

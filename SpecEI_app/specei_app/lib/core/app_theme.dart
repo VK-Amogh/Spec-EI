@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
-import 'app_colors_light.dart';
 
 /// SpecEI App Theme
 /// Supports both dark and light themes with green accent
@@ -28,88 +27,74 @@ class AppTheme {
   }
 
   static ThemeData get lightTheme {
-    return ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.light,
-      scaffoldBackgroundColor: AppColorsLight.background,
-      colorScheme: const ColorScheme.light(
-        primary: AppColorsLight.primary,
-        secondary: AppColorsLight.primaryDark,
-        surface: AppColorsLight.surface,
-        onPrimary: Colors.black,
-        onSurface: AppColorsLight.textPrimary,
-      ),
-      textTheme: _lightTextTheme,
-      inputDecorationTheme: _lightInputDecorationTheme,
-      elevatedButtonTheme: _elevatedButtonTheme,
-      textButtonTheme: _textButtonTheme,
-    );
+    // strict application of dark theme requested
+    return darkTheme;
   }
 
   static TextTheme get _darkTextTheme {
     return TextTheme(
-      // Display - Space Grotesk (brand font)
-      displayLarge: GoogleFonts.spaceGrotesk(
+      // Display - Outfit (brand font)
+      displayLarge: GoogleFonts.outfit(
         fontSize: 40,
-        fontWeight: FontWeight.bold,
-        letterSpacing: -1.5,
-        color: AppColors.textPrimary,
-      ),
-      displayMedium: GoogleFonts.spaceGrotesk(
-        fontSize: 32,
-        fontWeight: FontWeight.bold,
+        fontWeight: FontWeight.w500,
         letterSpacing: -1.0,
         color: AppColors.textPrimary,
       ),
-      displaySmall: GoogleFonts.spaceGrotesk(
-        fontSize: 24,
-        fontWeight: FontWeight.w600,
+      displayMedium: GoogleFonts.outfit(
+        fontSize: 32,
+        fontWeight: FontWeight.w500,
         letterSpacing: -0.5,
-        color: AppColors.primary,
-      ),
-      // Headlines - Space Grotesk
-      headlineLarge: GoogleFonts.spaceGrotesk(
-        fontSize: 24,
-        fontWeight: FontWeight.bold,
-        color: AppColors.primary,
-      ),
-      headlineMedium: GoogleFonts.spaceGrotesk(
-        fontSize: 20,
-        fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
       ),
-      // Body - Inter
-      bodyLarge: GoogleFonts.inter(
+      displaySmall: GoogleFonts.outfit(
+        fontSize: 24,
+        fontWeight: FontWeight.w500,
+        letterSpacing: 0,
+        color: AppColors.textPrimary,
+      ),
+      // Headlines - Outfit
+      headlineLarge: GoogleFonts.outfit(
+        fontSize: 24,
+        fontWeight: FontWeight.w500,
+        color: AppColors.textPrimary,
+      ),
+      headlineMedium: GoogleFonts.outfit(
+        fontSize: 20,
+        fontWeight: FontWeight.w500,
+        color: AppColors.textPrimary,
+      ),
+      // Body - Outfit
+      bodyLarge: GoogleFonts.outfit(
         fontSize: 16,
-        fontWeight: FontWeight.normal,
+        fontWeight: FontWeight.w400,
         color: AppColors.textSecondary,
       ),
-      bodyMedium: GoogleFonts.inter(
+      bodyMedium: GoogleFonts.outfit(
         fontSize: 14,
-        fontWeight: FontWeight.normal,
+        fontWeight: FontWeight.w400,
         color: AppColors.textSecondary,
       ),
-      bodySmall: GoogleFonts.inter(
+      bodySmall: GoogleFonts.outfit(
         fontSize: 12,
-        fontWeight: FontWeight.normal,
+        fontWeight: FontWeight.w400,
         color: AppColors.textMuted,
       ),
       // Labels
-      labelLarge: GoogleFonts.inter(
+      labelLarge: GoogleFonts.outfit(
         fontSize: 14,
-        fontWeight: FontWeight.w600,
+        fontWeight: FontWeight.w500,
         color: AppColors.textPrimary,
       ),
-      labelMedium: GoogleFonts.inter(
+      labelMedium: GoogleFonts.outfit(
         fontSize: 12,
-        fontWeight: FontWeight.w600,
-        letterSpacing: 1.0,
+        fontWeight: FontWeight.w500,
+        letterSpacing: 0.5,
         color: AppColors.textMuted,
       ),
-      labelSmall: GoogleFonts.inter(
+      labelSmall: GoogleFonts.outfit(
         fontSize: 10,
         fontWeight: FontWeight.w500,
-        letterSpacing: 1.5,
+        letterSpacing: 1.0,
         color: AppColors.textDimmed,
       ),
     );
@@ -136,118 +121,15 @@ class AppTheme {
         borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: Colors.red, width: 1),
       ),
-      hintStyle: GoogleFonts.inter(
+      hintStyle: GoogleFonts.outfit(
         fontSize: 14,
-        fontWeight: FontWeight.w500,
+        fontWeight: FontWeight.w400,
         color: AppColors.textMuted,
       ),
-      labelStyle: GoogleFonts.inter(
+      labelStyle: GoogleFonts.outfit(
         fontSize: 12,
-        fontWeight: FontWeight.w500,
+        fontWeight: FontWeight.w400,
         color: AppColors.textMuted,
-      ),
-    );
-  }
-
-  static TextTheme get _lightTextTheme {
-    return TextTheme(
-      // Display - Space Grotesk (brand font)
-      displayLarge: GoogleFonts.spaceGrotesk(
-        fontSize: 40,
-        fontWeight: FontWeight.bold,
-        letterSpacing: -1.5,
-        color: AppColorsLight.textPrimary,
-      ),
-      displayMedium: GoogleFonts.spaceGrotesk(
-        fontSize: 32,
-        fontWeight: FontWeight.bold,
-        letterSpacing: -1.0,
-        color: AppColorsLight.textPrimary,
-      ),
-      displaySmall: GoogleFonts.spaceGrotesk(
-        fontSize: 24,
-        fontWeight: FontWeight.w600,
-        letterSpacing: -0.5,
-        color: AppColorsLight.primary,
-      ),
-      // Headlines - Space Grotesk
-      headlineLarge: GoogleFonts.spaceGrotesk(
-        fontSize: 24,
-        fontWeight: FontWeight.bold,
-        color: AppColorsLight.primary,
-      ),
-      headlineMedium: GoogleFonts.spaceGrotesk(
-        fontSize: 20,
-        fontWeight: FontWeight.w600,
-        color: AppColorsLight.textPrimary,
-      ),
-      // Body - Inter
-      bodyLarge: GoogleFonts.inter(
-        fontSize: 16,
-        fontWeight: FontWeight.normal,
-        color: AppColorsLight.textSecondary,
-      ),
-      bodyMedium: GoogleFonts.inter(
-        fontSize: 14,
-        fontWeight: FontWeight.normal,
-        color: AppColorsLight.textSecondary,
-      ),
-      bodySmall: GoogleFonts.inter(
-        fontSize: 12,
-        fontWeight: FontWeight.normal,
-        color: AppColorsLight.textMuted,
-      ),
-      // Labels
-      labelLarge: GoogleFonts.inter(
-        fontSize: 14,
-        fontWeight: FontWeight.w600,
-        color: AppColorsLight.textPrimary,
-      ),
-      labelMedium: GoogleFonts.inter(
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
-        letterSpacing: 1.0,
-        color: AppColorsLight.textMuted,
-      ),
-      labelSmall: GoogleFonts.inter(
-        fontSize: 10,
-        fontWeight: FontWeight.w500,
-        letterSpacing: 1.5,
-        color: AppColorsLight.textDimmed,
-      ),
-    );
-  }
-
-  static InputDecorationTheme get _lightInputDecorationTheme {
-    return InputDecorationTheme(
-      filled: true,
-      fillColor: AppColorsLight.inputBackground,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: AppColorsLight.borderLight),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: AppColorsLight.borderLight),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColorsLight.primary, width: 1),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Colors.red, width: 1),
-      ),
-      hintStyle: GoogleFonts.inter(
-        fontSize: 14,
-        fontWeight: FontWeight.w500,
-        color: AppColorsLight.textMuted,
-      ),
-      labelStyle: GoogleFonts.inter(
-        fontSize: 12,
-        fontWeight: FontWeight.w500,
-        color: AppColorsLight.textMuted,
       ),
     );
   }
@@ -260,7 +142,10 @@ class AppTheme {
         elevation: 0,
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        textStyle: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600),
+        textStyle: GoogleFonts.outfit(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+        ),
       ),
     );
   }
@@ -269,7 +154,10 @@ class AppTheme {
     return TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: AppColors.primary,
-        textStyle: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600),
+        textStyle: GoogleFonts.outfit(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
       ),
     );
   }

@@ -1,4 +1,37 @@
-import 'package:objectbox/objectbox.dart';
+// Stub ObjectBox annotations for web compatibility
+// import 'package:objectbox/objectbox.dart';
+
+class Entity {
+  const Entity();
+}
+
+class Id {
+  const Id();
+}
+
+class Property {
+  final int? type;
+  const Property({this.type});
+}
+
+class PropertyType {
+  static const int date = 1;
+  static const int floatVector = 2;
+  static const int byteVector = 3;
+}
+
+class HnswIndex {
+  final int dimensions;
+  const HnswIndex({required this.dimensions});
+}
+
+class Index {
+  const Index();
+}
+
+class ToOne<T> {
+  T? target;
+}
 
 /// Layer 2: Event Memory (Timeline Core)
 @Entity()

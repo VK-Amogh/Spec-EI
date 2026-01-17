@@ -4,6 +4,7 @@ import '../core/app_colors.dart';
 import '../services/auth_service.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/glass_panel.dart';
+import '../widgets/breathing_glow.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
   final String identifier;
@@ -176,146 +177,166 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                           children: [
                             _buildHeader(),
                             const SizedBox(height: 32),
-                            GlassPanel(
-                              padding: const EdgeInsets.all(32),
-                              child: Form(
-                                key: _formKey,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Set New Password',
-                                      style: GoogleFonts.spaceGrotesk(
-                                        fontSize: 24,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.primary,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      'Create a strong password for ${widget.identifier}',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 14,
-                                        color: AppColors.textMuted,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 32),
-
-                                    CustomTextField(
-                                      label: 'NEW PASSWORD',
-                                      placeholder: '••••••••',
-                                      prefixIcon: Icons.lock_outline,
-                                      obscureText: _obscurePassword,
-                                      controller: _passwordController,
-                                      suffixIcon: _obscurePassword
-                                          ? Icons.visibility_off_outlined
-                                          : Icons.visibility_outlined,
-                                      onSuffixTap: () => setState(
-                                        () => _obscurePassword =
-                                            !_obscurePassword,
-                                      ),
-                                      validator: (value) {
-                                        if (value == null || value.isEmpty) {
-                                          return 'Enter a password';
-                                        }
-                                        return null;
-                                      },
-                                    ),
-                                    const SizedBox(height: 12),
-                                    _buildPasswordRequirements(),
-                                    const SizedBox(height: 20),
-
-                                    CustomTextField(
-                                      label: 'CONFIRM PASSWORD',
-                                      placeholder: '••••••••',
-                                      prefixIcon: Icons.lock_reset,
-                                      obscureText: _obscureConfirmPassword,
-                                      controller: _confirmPasswordController,
-                                      suffixIcon: _obscureConfirmPassword
-                                          ? Icons.visibility_off_outlined
-                                          : Icons.visibility_outlined,
-                                      onSuffixTap: () => setState(
-                                        () => _obscureConfirmPassword =
-                                            !_obscureConfirmPassword,
-                                      ),
-                                      validator: (value) {
-                                        if (value != _passwordController.text) {
-                                          return 'Passwords do not match';
-                                        }
-                                        return null;
-                                      },
-                                    ),
-
-                                    if (_errorMessage != null) ...[
-                                      const SizedBox(height: 16),
+                            BreathingGlow(
+                              glowColor: Colors.white,
+                              maxOpacity: 0.04,
+                              enableFloating: true,
+                              floatingRange: 6.0,
+                              blurRadius: 40,
+                              spreadRadius: 4,
+                              duration: const Duration(seconds: 3),
+                              child: GlassPanel(
+                                padding: const EdgeInsets.all(32),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.white.withOpacity(
+                                      0.05,
+                                    ), // Light blurred white glow
+                                    blurRadius: 60,
+                                    spreadRadius: 2,
+                                  ),
+                                ],
+                                child: Form(
+                                  key: _formKey,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
                                       Text(
-                                        _errorMessage!,
-                                        style: const TextStyle(
-                                          color: Colors.red,
-                                          fontSize: 12,
+                                        'Set New Password',
+                                        style: GoogleFonts.spaceGrotesk(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.primary,
                                         ),
                                       ),
-                                    ],
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'Create a strong password for ${widget.identifier}',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 14,
+                                          color: AppColors.textMuted,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 32),
 
-                                    const SizedBox(height: 32),
+                                      CustomTextField(
+                                        label: 'NEW PASSWORD',
+                                        placeholder: '••••••••',
+                                        prefixIcon: Icons.lock_outline,
+                                        obscureText: _obscurePassword,
+                                        controller: _passwordController,
+                                        suffixIcon: _obscurePassword
+                                            ? Icons.visibility_off_outlined
+                                            : Icons.visibility_outlined,
+                                        onSuffixTap: () => setState(
+                                          () => _obscurePassword =
+                                              !_obscurePassword,
+                                        ),
+                                        validator: (value) {
+                                          if (value == null || value.isEmpty) {
+                                            return 'Enter a password';
+                                          }
+                                          return null;
+                                        },
+                                      ),
+                                      const SizedBox(height: 12),
+                                      _buildPasswordRequirements(),
+                                      const SizedBox(height: 20),
 
-                                    if (_passwordsMatch)
-                                      ElevatedButton(
-                                        onPressed: _handleResetPassword,
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.greenAccent,
-                                          foregroundColor: Colors.black,
-                                          minimumSize: const Size(
-                                            double.infinity,
-                                            56,
+                                      CustomTextField(
+                                        label: 'CONFIRM PASSWORD',
+                                        placeholder: '••••••••',
+                                        prefixIcon: Icons.lock_reset,
+                                        obscureText: _obscureConfirmPassword,
+                                        controller: _confirmPasswordController,
+                                        suffixIcon: _obscureConfirmPassword
+                                            ? Icons.visibility_off_outlined
+                                            : Icons.visibility_outlined,
+                                        onSuffixTap: () => setState(
+                                          () => _obscureConfirmPassword =
+                                              !_obscureConfirmPassword,
+                                        ),
+                                        validator: (value) {
+                                          if (value !=
+                                              _passwordController.text) {
+                                            return 'Passwords do not match';
+                                          }
+                                          return null;
+                                        },
+                                      ),
+
+                                      if (_errorMessage != null) ...[
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          _errorMessage!,
+                                          style: const TextStyle(
+                                            color: Colors.red,
+                                            fontSize: 12,
                                           ),
-                                          shape: RoundedRectangleBorder(
+                                        ),
+                                      ],
+
+                                      const SizedBox(height: 32),
+
+                                      if (_passwordsMatch)
+                                        ElevatedButton(
+                                          onPressed: _handleResetPassword,
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.greenAccent,
+                                            foregroundColor: Colors.black,
+                                            minimumSize: const Size(
+                                              double.infinity,
+                                              56,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                            elevation: 8,
+                                            shadowColor: Colors.greenAccent
+                                                .withOpacity(0.4),
+                                          ),
+                                          child: _isLoading
+                                              ? const CircularProgressIndicator(
+                                                  color: Colors.black,
+                                                )
+                                              : Text(
+                                                  'Reset Password',
+                                                  style:
+                                                      GoogleFonts.spaceGrotesk(
+                                                        fontSize: 16,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
+                                                ),
+                                        )
+                                      else
+                                        Container(
+                                          width: double.infinity,
+                                          padding: const EdgeInsets.all(16),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.surface
+                                                .withOpacity(0.5),
                                             borderRadius: BorderRadius.circular(
                                               12,
                                             ),
+                                            border: Border.all(
+                                              color: AppColors.borderLight,
+                                            ),
                                           ),
-                                          elevation: 8,
-                                          shadowColor: Colors.greenAccent
-                                              .withOpacity(0.4),
-                                        ),
-                                        child: _isLoading
-                                            ? const CircularProgressIndicator(
-                                                color: Colors.black,
-                                              )
-                                            : Text(
-                                                'Reset Password',
-                                                style: GoogleFonts.spaceGrotesk(
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
+                                          child: Center(
+                                            child: Text(
+                                              'Reset Password',
+                                              style: GoogleFonts.inter(
+                                                color: AppColors.textMuted,
+                                                fontWeight: FontWeight.w500,
                                               ),
-                                      )
-                                    else
-                                      Container(
-                                        width: double.infinity,
-                                        padding: const EdgeInsets.all(16),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.surface.withOpacity(
-                                            0.5,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                          border: Border.all(
-                                            color: AppColors.borderLight,
-                                          ),
-                                        ),
-                                        child: Center(
-                                          child: Text(
-                                            'Reset Password',
-                                            style: GoogleFonts.inter(
-                                              color: AppColors.textMuted,
-                                              fontWeight: FontWeight.w500,
                                             ),
                                           ),
                                         ),
-                                      ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
@@ -377,11 +398,28 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         child: Stack(
           children: [
             Positioned(
-              top: -100,
-              right: -50,
+              top: -120,
+              left: -60,
               child: Container(
-                width: 400,
-                height: 400,
+                width: 600,
+                height: 600,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      AppColors.primary.withOpacity(0.05),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: -60,
+              right: -60,
+              child: Container(
+                width: 500,
+                height: 500,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: RadialGradient(

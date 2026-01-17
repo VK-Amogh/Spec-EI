@@ -7,6 +7,7 @@ import '../widgets/glass_panel.dart';
 import '../services/auth_service.dart';
 import 'otp_verification_screen.dart';
 import 'package:intl_phone_number_input/intl_phone_number_input.dart';
+import '../widgets/breathing_glow.dart';
 
 /// Forgot Password Screen - SpecEI
 /// Matches design from _ai_hub_ultimate_ui_4
@@ -213,13 +214,29 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                             const SizedBox(height: 32),
 
                             // Form panel
-                            GlassPanel(
-                              padding: const EdgeInsets.all(32),
-                              showTopGradient: true,
-                              enableGlow: false,
-                              child: _emailSent
-                                  ? _buildSuccessContent()
-                                  : _buildFormContent(),
+                            BreathingGlow(
+                              glowColor: Colors.white,
+                              maxOpacity: 0.04,
+                              enableFloating: true,
+                              floatingRange: 6.0,
+                              blurRadius: 40,
+                              spreadRadius: 4,
+                              duration: const Duration(seconds: 3),
+                              child: GlassPanel(
+                                padding: const EdgeInsets.all(32),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.white.withOpacity(
+                                      0.05,
+                                    ), // Light blurred white glow
+                                    blurRadius: 60,
+                                    spreadRadius: 2,
+                                  ),
+                                ],
+                                child: _emailSent
+                                    ? _buildSuccessContent()
+                                    : _buildFormContent(),
+                              ),
                             ),
 
                             // Secure connection text
@@ -242,21 +259,43 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   Widget _buildBackgroundEffect() {
     return Positioned.fill(
       child: IgnorePointer(
-        child: Center(
-          child: Container(
-            width: 600,
-            height: 600,
-            transform: Matrix4.translationValues(0, -80, 0),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: RadialGradient(
-                colors: [
-                  AppColors.primary.withOpacity(0.05),
-                  Colors.transparent,
-                ],
+        child: Stack(
+          children: [
+            Positioned(
+              top: -120,
+              left: -60,
+              child: Container(
+                width: 600,
+                height: 600,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      AppColors.primary.withOpacity(0.05),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
               ),
             ),
-          ),
+            Positioned(
+              bottom: -60,
+              right: -60,
+              child: Container(
+                width: 500,
+                height: 500,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      AppColors.primary.withOpacity(0.05),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

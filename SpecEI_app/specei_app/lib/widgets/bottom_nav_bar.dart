@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import '../core/app_colors.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 /// Bottom Navigation Bar for SpecEI
 /// Includes navigation tabs and central action button for capture options
@@ -24,10 +25,10 @@ class BottomNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      height: 64,
+      height: 72, // Increased slightly to accommodate hover labels
       decoration: BoxDecoration(
         color: AppColors.getSurface(context).withOpacity(0.9),
-        borderRadius: BorderRadius.circular(32),
+        borderRadius: BorderRadius.circular(36),
         border: Border.all(color: AppColors.getBorderLight(context)),
         boxShadow: [
           BoxShadow(
@@ -38,39 +39,43 @@ class BottomNavBar extends StatelessWidget {
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(32),
+        borderRadius: BorderRadius.circular(36),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              // Home
-              _buildNavItem(
+              _NavBarItem(
                 context: context,
                 icon: Icons.home_rounded,
                 label: 'Home',
                 index: 0,
+                currentIndex: currentIndex,
+                onTap: onTap,
               ),
-              // Memory
-              _buildNavItem(
+              _NavBarItem(
                 context: context,
                 icon: Icons.psychology_rounded,
                 label: 'Memory',
                 index: 1,
+                currentIndex: currentIndex,
+                onTap: onTap,
               ),
-              // Camera
-              _buildNavItem(
+              _NavBarItem(
                 context: context,
                 icon: Icons.videocam_rounded,
                 label: 'Camera',
                 index: 2,
+                currentIndex: currentIndex,
+                onTap: onTap,
               ),
-              // Settings
-              _buildNavItem(
+              _NavBarItem(
                 context: context,
                 icon: Icons.settings_rounded,
                 label: 'Settings',
                 index: 3,
+                currentIndex: currentIndex,
+                onTap: onTap,
               ),
             ],
           ),
@@ -226,28 +231,129 @@ class BottomNavBar extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _buildNavItem({
-    required BuildContext context,
-    required IconData icon,
-    required String label,
-    required int index,
-  }) {
-    final isActive = currentIndex == index;
+class _NavBarItem extends StatefulWidget {
+  final BuildContext context;
+  final IconData icon;
+  final String label;
+  final int index;
+  final int currentIndex;
+  final ValueChanged<int> onTap;
 
-    return GestureDetector(
-      onTap: () => onTap(index),
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: const BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.transparent,
-        ),
-        child: Icon(
-          icon,
-          size: 26,
-          color: isActive ? AppColors.primary : AppColors.getTextMuted(context),
+  const _NavBarItem({
+    required this.context,
+    required this.icon,
+    required this.label,
+    required this.index,
+    required this.currentIndex,
+    required this.onTap,
+  });
+
+  @override
+  State<_NavBarItem> createState() => _NavBarItemState();
+}
+
+class _NavBarItemState extends State<_NavBarItem>
+    with SingleTickerProviderStateMixin {
+  bool _isHovered = false;
+  late AnimationController _bounceController;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _bounceController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 100),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.9).animate(
+      CurvedAnimation(parent: _bounceController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _bounceController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    bool isActive = widget.currentIndex == widget.index;
+    Color iconColor = isActive
+        ? AppColors.primary
+        : AppColors.getTextMuted(context);
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () {
+          _bounceController.forward().then((_) => _bounceController.reverse());
+          widget.onTap(widget.index);
+        },
+        behavior: HitTestBehavior.opaque,
+        child: ScaleTransition(
+          scale: _scaleAnimation,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: EdgeInsets.symmetric(
+              vertical: 8,
+              horizontal: _isHovered ? 16 : 12,
+            ),
+            decoration: BoxDecoration(
+              color: isActive && _isHovered
+                  ? AppColors.primary.withOpacity(0.1)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: isActive
+                  ? [
+                      BoxShadow(
+                        color: AppColors.primary.withOpacity(0.4),
+                        blurRadius: 15, // Active tab glow
+                        spreadRadius: -2,
+                      ),
+                    ]
+                  : (_isHovered
+                        ? [
+                            BoxShadow(
+                              color: Colors.white.withOpacity(0.05),
+                              blurRadius: 8,
+                              spreadRadius: 0,
+                            ),
+                          ]
+                        : null),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(widget.icon, size: 26, color: iconColor),
+                // Label on hover
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  height: _isHovered ? 16 : 0,
+                  margin: EdgeInsets.only(top: _isHovered ? 4 : 0),
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 200),
+                    opacity: _isHovered ? 1.0 : 0.0,
+                    child: Text(
+                      widget.label,
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: isActive
+                            ? AppColors.primary
+                            : AppColors.getTextPrimary(context),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
